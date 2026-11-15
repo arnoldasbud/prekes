@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Prekių spūstis</title>
+<title>Prekių rūšiuotojas</title>
 <meta name="theme-color" content="#1e293b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
@@ -224,7 +224,7 @@ const GOODS={
  drabuziai:['👕','👖','👗','👚','👒','🧢','🎩','👟','👠','👢','🧦','🧤','🧣','🕶️','🎒','👜','👛','💍','⌚'],
 };
 const ALL_GOODS=[...new Set(Object.values(GOODS).flat())];
-/* temos keičiasi kas 25 lygius (išvaizda ir pagrindinės prekės) */
+/* temos keičiasi kas etapą (75 lygiai): išvaizda ir pagrindinės prekės */
 const WORLDS=[
  {name:'Parduotuvė',emoji:'🛒',items:[...GOODS.vaisiai,...GOODS.gerimai,...GOODS.namams],
   sk:{lock:['🔒','Užrakinta lentyna'],frozen:['🧊','Šaldytos prekės'],hidden:['🛍️','Prekės maišeliuose'],dark:['🌑','Tamsus sandėlis'],small:['📏','Siauros lentynos'],conv:['🛻','Konvejeris'],elev:['🛗','Kylančios lentynos']}},
@@ -235,47 +235,45 @@ const WORLDS=[
  {name:'Žaislai',emoji:'🧸',items:[...GOODS.zaislai,...GOODS.drabuziai],
   sk:{lock:['🔒','Užrakintos lentynos'],frozen:['🎀','Supakuoti žaislai'],hidden:['❓','Staigmenos'],dark:['🌙','Naktis parduotuvėje'],small:['📏','Siauros lentynos'],conv:['🛻','Konvejeris'],elev:['🛗','Kylančios lentynos']}},
 ];
-const STAGE=25,MAXL=1000;
+const STAGE=75,MAXL=1000;
 const cyc=L=>Math.floor((L-1)/STAGE),qOf=L=>(L-1)%STAGE+1,worldOf=L=>WORLDS[cyc(L)%WORLDS.length];
-const kindOf=L=>{const q=qOf(L);return q===STAGE?'big':q===12?'boss':'n'},KICON={n:'',boss:' 🔥',big:' 👑'};
-/* kiekviename 25 lygių rate sunkumai pasirodo iš eilės; iki 25 lygio – visi */
-const MECH_ORDER=['lock','conv','frozen','elev','hidden','dark','small'],MECH_Q=[4,7,10,13,16,19,22];
-const MECH_IL=MECH_ORDER.map((m,i)=>MECH_Q[i]);   // pirmo rato įvedimo lygiai
+/* bosai – kiekvieno 10 lygių bloko gale (15, 25, … 65), didysis – etapo gale (75) */
+const kindOf=L=>{const q=qOf(L);return q===STAGE?'big':(q%10===5&&q>5)?'boss':'n'},KICON={n:'',boss:' 🔥',big:' 👑'};
+/* etapas = 75 lygiai: 1–5 apšilimas, tada kas 10 lygių nauja kliūtis (6, 16, 26 … 66); po 75 – vėl nuo lengviausio */
+const MECH_ORDER=['lock','conv','frozen','elev','hidden','dark','small'],MECH_Q=[6,16,26,36,46,56,66];
+const MECH_IL=MECH_Q;
 function mechsOf(L){
   const c=cyc(L),q=qOf(L),pr=rng(L*977+5),kd=kindOf(L);
-  const avail=MECH_ORDER.filter((m,i)=>MECH_Q[i]<=q);if(!avail.length)return [];
-  const intro=MECH_ORDER.filter((m,i)=>MECH_Q[i]===q);
-  let k=1+Math.floor(q/9)+Math.min(2,Math.floor(c/4))+(kd==='big'?2:kd==='boss'?1:0);
-  if(q%3===2)k--;            // atokvėpio lygiai
-  k=Math.max(intro.length?1:0,Math.min(k,avail.length));
-  const on=new Set(intro);
-  for(const m of shuffle(avail.slice(),pr)){if(on.size>=k)break;on.add(m)}
-  return [...on]}
+  const idx=MECH_Q.filter(x=>x<=q).length-1;if(idx<0)return [];
+  const feat=MECH_ORDER[idx],prev=MECH_ORDER.slice(0,idx),pos=q-MECH_Q[idx];   // pos 0..9 – kelintas lygis su šia naujove
+  let extra=Math.floor(idx/2)+(pos>=5?1:0)+Math.min(1,Math.floor(c/3))+(kd==='big'?3:kd==='boss'?1:0);
+  if(pos<3&&kd==='n')extra=0;                       // pirmi 3 lygiai – naujovė viena
+  if(q%3===2&&kd==='n')extra=Math.max(0,extra-1);   // atokvėpio lygiai
+  return [feat,...shuffle(prev.slice(),pr).slice(0,Math.min(extra,prev.length))]}
 function params(L){
   const c=cyc(L),q=qOf(L),pr=rng(L*1013+11),kd=kindOf(L);
   const big=kd==='big',boss=kd!=='n',easy=!boss&&q%3===2;
   const cc=Math.min(c,12),D=Math.min(1,q/STAGE*.75+cc*.04+(big?.12:boss?.06:0)),f=.5+q/STAGE*.5;
-  const on=new Set(mechsOf(L));
+  const on=new Set(mechsOf(L)),pos=q>=MECH_Q[0]?q-MECH_Q.filter(x=>x<=q).pop():9;
   let K,depth;
   if(L===1){K=3;depth=1}
   else if(L===2){K=4;depth=2}
   else if(L===3){K=6;depth=2}
-  else{K=Math.round(4+q*1.25+cc*1.3+D*5+(big?6:boss?3:0));if(easy)K=Math.round(K*.85);K=Math.min(K,50);
-    depth=Math.min(6,2+Math.floor((q+cc*2)/9)+(boss?1:0))}
+  else{K=Math.round(4+q*.42+cc*1.3+D*5+(big?6:boss?3:0));if(easy)K=Math.round(K*.85);if(pos<=1&&!boss)K=Math.round(K*.85);K=Math.min(K,50);
+    depth=Math.min(6,2+Math.floor((q/3+cc*2)/9)+(boss?1:0))}
   const T=K;   // kiekviena prekė – tik vienas trejetas
-  // prekės: pirmiausia iš temos, trūkstamos – iš visų likusių; kiekviename lygyje vis kitos
   const W=worldOf(L),r2=rng(L*31337+3),own=shuffle(W.items.slice(),r2);
   const rest=shuffle(ALL_GOODS.filter(x=>!W.items.includes(x)),r2);
-  const mixN=c>=4?Math.round(K*.3):0;
+  const mixN=c>=2?Math.round(K*.3):0;
   const items=[...new Set([...own.slice(0,K-mixN),...rest.slice(0,mixN),...own,...rest])].slice(0,K);
   const N=3*K;let S=Math.max(4,Math.ceil(N/(3*depth*.8)));
-  const conv=on.has('conv')?Math.min(5,3+Math.round(f)+(boss?1:0)):0,elev=on.has('elev')?3+(q>=18?1:0):0;
+  const conv=on.has('conv')?Math.min(5,3+Math.round(f)+(boss?1:0)):0,elev=on.has('elev')?3+(q>=50?1:0):0;
   S=Math.max(S,conv+elev+(conv&&elev?3:2));
   if(S>12+Math.floor((conv+elev)/2)){S=12+Math.floor((conv+elev)/2);depth=Math.ceil(N/(S*3*.8))}
   if(L===1)S=4;
   const free=L<=3?3:Math.max(3,Math.round(S*(.75-D*.35)));
   const small=on.has('small')?1+Math.round(f):0;
-  const lockN=on.has('lock')?Math.min(2,1+(q>=14?1:0)):0,lockAt=[];for(let i=0;i<lockN;i++)lockAt.push(Math.max(2,Math.min(K-2,3+i*2+Math.floor(pr()*2)+(boss?1:0))));
+  const lockN=on.has('lock')?Math.min(2,1+(q>=30?1:0)):0,lockAt=[];for(let i=0;i<lockN;i++)lockAt.push(Math.max(2,Math.min(K-2,3+i*2+Math.floor(pr()*2)+(boss?1:0))));
   const mech={on:[...on],lockN,lockAt,frozen:on.has('frozen')?.1+.12*f:0,hidden:on.has('hidden')?.25+.25*f:0,dark:on.has('dark'),small,conv,elev,
     convSpd:(16+D*18)*(pr()<.5?1:-1),elevSpd:12+D*14};
   const time=L<=3?180:Math.max(100,Math.round(N*(big?2.9:boss?3.2:3.6)+30));
@@ -440,7 +438,7 @@ class Game{
 </script>
 <script>
 /* ===================== VALDYMAS ===================== */
-const VERSION='1.2.0';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
+const VERSION='1.3.0';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let unlocked=store.get('prekes.unlocked',1),level=store.get('prekes.level',1),best=store.get('prekes.stars',{});
@@ -895,7 +893,7 @@ function openAch(back){const s=achStats(),n=ACH.filter(a=>s.got[a.id]).length;
 /* ===================== PAGRINDINIS MENIU ===================== */
 var HOME={on:false};
 function showHome(){HOME.on=true;if(game&&curWorld)setBg(curWorld);let tot=0;for(const k in best)tot+=best[k]||0;const w=worldOf(level);
-  $('home').innerHTML=`<div class="hm"><div class="hlogo"><div>${[0,1,2].map(()=>`<span>${w.items[0]}</span>`).join('')}</div><i></i></div><h1>Prekių<br>spūstis</h1>
+  $('home').innerHTML=`<div class="hm"><div class="hlogo"><div>${[0,1,2].map(()=>`<span>${w.items[0]}</span>`).join('')}</div><i></i></div><h1>Prekių<br>rūšiuotojas</h1>
     <p class="hst">${w.emoji} Etapas ${cyc(level)+1} · Lygis ${level}<br>★ ${tot} · 🪙 ${COINS}</p>
     <button class="primary big" id="hpl">▶ ${unlocked>1?'Tęsti':'Žaisti'}</button>
     <button id="hdl">📅 Dienos iššūkis${dailyDone()?' ✅':' · 🪙'}</button><button id="hlv">🗺️ Lygiai</button><button id="hac">🏆 Pasiekimai</button><button id="hst">⚙️ Nustatymai</button>
