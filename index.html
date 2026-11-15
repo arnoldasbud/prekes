@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Prekių spūstis</title>
+<meta name="theme-color" content="#1e293b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;color:#f2f5f8;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+body{background:#1e293b;transition:background .6s}
+body.w0{background:linear-gradient(180deg,#f6e7c9,#e6cb9c)}
+body.w1{background:radial-gradient(ellipse at 50% 110%,#7c2d12 0,#3b1d12 45%,#1c1310 100%)}
+body.w2{background:linear-gradient(180deg,#fde7ef,#f9c9da)}
+body.w3{background:linear-gradient(180deg,#d6ecff,#a9d4fb)}
+body.w0::before,body.w2::before,body.w3::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35}
+body.w0::before{background:repeating-linear-gradient(90deg,transparent 0 46px,rgba(150,105,55,.18) 46px 48px)}
+body.w2::before{background:radial-gradient(circle,rgba(255,255,255,.7) 2px,transparent 3px) 0 0/28px 28px}
+body.w3::before{background:radial-gradient(circle,rgba(255,255,255,.55) 3px,transparent 4px) 0 0/36px 36px,radial-gradient(circle,rgba(250,204,21,.35) 2px,transparent 3px) 18px 18px/36px 36px}
+#app{max-width:480px;margin:0 auto;height:100dvh;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);display:flex;flex-direction:column;position:relative;z-index:1}
+header{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;background:rgba(14,19,26,.88);backdrop-filter:blur(4px);position:relative;z-index:5}
+button{font:inherit;color:inherit;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:6px 10px;cursor:pointer}
+button:disabled{opacity:.3}
+button.primary{background:#3b82f6;border-color:#3b82f6;font-weight:700;padding:11px 18px}
+#lvlBtn{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;padding:4px 8px}
+#lvlBtn b{font-size:16px}#lvlBtn small{font-size:11px;color:#a9b6c3}
+.stats{display:flex;gap:10px;font-size:15px;color:#a9b6c3;font-variant-numeric:tabular-nums;align-items:center}
+.stats b{color:#fff}.stats .warn b{color:#f87171;animation:pulse .5s infinite alternate}.stats .frz b{color:#7dd3fc}
+.hbtn{display:flex;gap:6px}.hbtn button{width:42px;height:40px;padding:0;font-size:20px;position:relative}
+#hint.new{animation:hintp 1s infinite alternate;border-color:#facc15}@keyframes hintp{to{box-shadow:0 0 0 4px rgba(250,204,21,.35)}}
+#strip{display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(14,19,26,.62);font-size:12px;font-weight:700;position:relative;z-index:4}
+#strip .pg{flex:1;min-width:60px}#strip .pbar{height:8px;background:rgba(255,255,255,.15);border-radius:5px;overflow:hidden}#strip .pbar i{display:block;height:100%;background:linear-gradient(90deg,#22c55e,#a3e635);transition:width .35s;width:0}
+#strip .ch{display:flex;flex-direction:column;gap:1px;max-width:62%}#strip .ok{color:#86efac}#strip .bad{color:#fca5a5;text-decoration:line-through}#strip .par{font-weight:600;color:#cbd5e1}#strip .par .bad{text-decoration:none}
+#strip .coin{color:#fde68a;white-space:nowrap}
+#board{flex:1;position:relative;display:flex;flex-direction:column;padding:6px;--sz:56px;overflow:hidden;min-height:0}
+#top{flex:1;display:flex;gap:8px;min-height:0}
+#grid{flex:1;display:grid;justify-content:center;align-content:center}
+#conv{display:none;position:relative;overflow:hidden;margin-top:8px;border-radius:12px;background:repeating-linear-gradient(90deg,#334155 0 14px,#475569 14px 28px);box-shadow:inset 0 3px 6px rgba(0,0,0,.45),0 0 0 3px #1e293b}
+#elev{display:none;position:relative;overflow:hidden;border-radius:12px;background:linear-gradient(90deg,#64748b 0 4px,transparent 4px calc(100% - 4px),#64748b calc(100% - 4px)),repeating-linear-gradient(180deg,rgba(51,65,85,.55) 0 3px,rgba(148,163,184,.25) 3px 26px);box-shadow:inset 0 0 8px rgba(0,0,0,.4),0 0 0 3px rgba(30,41,59,.6)}
+#conv .shelf,#elev .shelf{position:absolute;left:0;top:0;will-change:transform;transition:none}
+#conv::before,#elev::before{content:attr(data-l);position:absolute;font-size:10px;font-weight:900;letter-spacing:2px;color:rgba(255,255,255,.35);left:8px;top:2px}
+#bar{display:flex;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));background:rgba(14,19,26,.88);position:relative;z-index:5}
+#bar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0 4px;border-radius:12px}
+#bar b{font-size:21px;line-height:1.1}#bar small{font-size:10px;color:#fde68a;font-weight:700}#bar span{font-size:9px;color:#a9b6c3;white-space:nowrap}
+/* lentynos */
+.shelf{position:relative;justify-self:center;width:calc(var(--cap)*var(--sz) + 12px);padding:0 6px;transition:transform .2s}
+.shelf .bk{display:flex;height:calc(var(--sz)*.46);align-items:flex-end;position:relative;z-index:0}
+.shelf .bk i{width:var(--sz);text-align:center;font-style:normal;font-size:calc(var(--sz)*.56);line-height:1;opacity:.55;filter:brightness(.62) saturate(.55);transform:translateY(calc(var(--sz)*.2))}
+.shelf.dark .bk i{filter:brightness(0);opacity:.28}
+.shelf .bk i.q{filter:none;opacity:.5;font-size:calc(var(--sz)*.4)}
+.shelf .row{display:flex;position:relative;z-index:1;height:var(--sz)}
+.slot{width:var(--sz);height:var(--sz);display:flex;align-items:flex-end;justify-content:center;position:relative}
+.it{width:calc(var(--sz)*.94);height:calc(var(--sz)*.94);display:flex;align-items:center;justify-content:center;font-size:calc(var(--sz)*.72);line-height:1;cursor:grab;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35));position:relative;touch-action:none;transition:transform .12s}
+.it.sel{transform:translateY(-9px) scale(1.12);filter:drop-shadow(0 0 6px #fde047) drop-shadow(0 6px 4px rgba(0,0,0,.35))}
+.it.lift{opacity:.15}
+.it.hs{animation:hs .6s infinite alternate}@keyframes hs{to{transform:translateY(-8px) scale(1.15);filter:drop-shadow(0 0 8px #22d3ee)}}
+.shelf.ht .row{animation:ht .6s infinite alternate;border-radius:10px}@keyframes ht{to{box-shadow:0 0 0 3px #22d3ee,0 0 16px #22d3ee}}
+.it.hid{font-size:calc(var(--sz)*.5);font-weight:900;color:#5b3a1a;background:linear-gradient(#e9c999,#c99a62);border-radius:10px 10px 6px 6px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.15),0 2px 3px rgba(0,0,0,.3);width:calc(var(--sz)*.78);height:calc(var(--sz)*.86);filter:none}
+.it.hid sub{position:absolute;top:-4px;right:-4px;font-size:calc(var(--sz)*.28)}
+.it.frz{cursor:not-allowed}
+.it.frz::after{content:'';position:absolute;inset:4%;border-radius:12px;background:linear-gradient(135deg,rgba(224,242,254,.75),rgba(125,211,252,.45) 60%,rgba(240,249,255,.7));box-shadow:inset 0 0 0 2px rgba(255,255,255,.9)}
+.w1 .it.frz::after{background:radial-gradient(circle at 50% 80%,rgba(251,146,60,.6),rgba(239,68,68,.25) 60%,transparent 75%);box-shadow:none;animation:flick .5s infinite alternate}@keyframes flick{to{opacity:.6}}
+.w3 .it.frz::after{background:linear-gradient(90deg,transparent 42%,rgba(236,72,153,.85) 42% 58%,transparent 58%),linear-gradient(transparent 42%,rgba(236,72,153,.85) 42% 58%,transparent 58%),rgba(252,231,243,.55);box-shadow:inset 0 0 0 2px #ec4899}
+.it.frz em{position:absolute;right:-2px;bottom:-2px;z-index:2;font-style:normal;font-size:11px;font-weight:900;background:#0c4a6e;color:#fff;border-radius:9px;padding:1px 5px;box-shadow:0 0 0 2px #fff;filter:none}
+.w1 .it.frz em{background:#9a3412}.w3 .it.frz em{background:#9d174d}
+.it.adv{animation:adv .38s ease-out}@keyframes adv{from{transform:translateY(-34%) scale(.6);opacity:.35;filter:brightness(.6)}}
+.it.drop{animation:drop .3s ease-out}@keyframes drop{0%{transform:scale(1.25)}60%{transform:scale(.92)}100%{transform:scale(1)}}
+.it.thaw{animation:thaw .6s}@keyframes thaw{0%{transform:scale(1.3);filter:drop-shadow(0 0 12px #fff)}100%{transform:scale(1)}}
+.it.rev{animation:rev .5s}@keyframes rev{0%{transform:rotateY(90deg)}100%{transform:rotateY(0)}}
+.shelf .plank{height:11px;border-radius:3px;margin:0 -6px;position:relative;z-index:2}
+.w0 .plank{background:linear-gradient(#c08a52,#8a5a2b);box-shadow:0 4px 5px rgba(0,0,0,.25)}
+.w0 .shelf .row{background:linear-gradient(rgba(120,80,40,.12),rgba(120,80,40,.22));border-radius:6px 6px 0 0}
+.w1 .plank{height:6px;background:linear-gradient(#e7c08f,#a06a35);margin:0 -14px 0 -6px;border-radius:3px 10px 10px 3px;transform:translateY(calc(var(--sz)*-.48));box-shadow:0 2px 3px rgba(0,0,0,.4);clip-path:polygon(0 0,94% 0,100% 50%,94% 100%,0 100%)}
+.w1 .shelf::before{content:'';position:absolute;left:0;right:0;top:calc(var(--sz)*.46 - 2px);height:calc(var(--sz) + 6px);background:repeating-linear-gradient(90deg,rgba(0,0,0,.5) 0 3px,transparent 3px 14px),linear-gradient(rgba(250,120,40,.22),rgba(60,30,20,.6));border-radius:8px;box-shadow:inset 0 -6px 12px rgba(251,146,60,.3),0 0 0 2px rgba(0,0,0,.35)}
+.w1 .shelf .plank{z-index:0}
+.w2 .plank{background:linear-gradient(#fff,#f9a8d4);box-shadow:0 4px 6px rgba(190,24,93,.25)}
+.w2 .shelf .row{background:linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.25));border:2px solid rgba(255,255,255,.8);border-bottom:0;border-radius:12px 12px 0 0}
+.w3 .plank{background:linear-gradient(#60a5fa,#2563eb);box-shadow:0 4px 5px rgba(30,64,175,.3)}
+.w3 .shelf:nth-child(3n+2) .plank{background:linear-gradient(#fbbf24,#d97706)}.w3 .shelf:nth-child(3n) .plank{background:linear-gradient(#f472b6,#db2777)}
+.w3 .shelf .row{background:rgba(255,255,255,.28);border-radius:8px 8px 0 0}
+.shelf.small .plank{filter:hue-rotate(160deg) saturate(.7)}
+.shelf .ly{position:absolute;right:-2px;top:2px;z-index:3;background:#0f172a;color:#fde68a;font-size:11px;font-weight:900;border-radius:9px;padding:1px 6px;box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+.shelf.bonus .plank{background:linear-gradient(#4ade80,#16a34a)}
+.lockov{position:absolute;left:0;right:0;top:calc(var(--sz)*.3);bottom:0;z-index:4;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(15,23,42,.62) 0 10px,rgba(30,41,59,.72) 10px 20px);display:flex;align-items:center;justify-content:center;gap:4px;font-weight:900;font-size:16px;color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.lockov b{background:#facc15;color:#111;border-radius:10px;padding:0 7px;font-size:14px}
+.lockov.gone{animation:lkgone .6s forwards}@keyframes lkgone{to{opacity:0;transform:scale(1.2)}}
+.shelf.nope{animation:shake .3s}@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.it.nope{animation:shake .3s}
+@keyframes pulse{to{opacity:.55}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:20;overflow:hidden}
+.fly{position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;line-height:1;filter:drop-shadow(0 8px 6px rgba(0,0,0,.35));will-change:transform}
+.pop{position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;line-height:1}
+.spk{position:absolute;left:0;top:0;width:8px;height:8px;border-radius:50%}
+.cmb{position:absolute;left:0;top:0;font:900 22px system-ui;color:#fde047;text-shadow:0 2px 0 #92400e,0 0 8px rgba(0,0,0,.4);white-space:nowrap;transform:translate(-50%,-50%)}
+/* langai */
+#overlay{position:fixed;inset:0;background:rgba(10,14,20,.72);display:none;align-items:center;justify-content:center;z-index:30}
+#overlay.show{display:flex}
+.card{background:#1f2a36;border-radius:18px;padding:22px;width:min(330px,88vw);max-height:92vh;overflow:auto;text-align:center;display:flex;flex-direction:column;gap:12px}
+.card h2{margin:0;font-size:22px}.card p{margin:0;color:#a9b6c3}.card .coin{color:#fde68a;font-weight:800}
+.stars{font-size:36px;letter-spacing:4px;color:#fbbf24}.stars span{color:#4b5563}
+.sbrk{display:flex;flex-direction:column;gap:4px;font-size:14px;color:#6b7280}.sbrk .on{color:#fbbf24}
+.pm{display:flex;flex-direction:column;gap:8px}.pm2{display:flex;gap:8px}.pm2 button{flex:1}
+.hl{display:flex;flex-direction:column;gap:10px;text-align:left;max-height:60vh;overflow:auto}.hl div{display:flex;gap:10px;align-items:flex-start}.hl b{font-size:22px;line-height:1;flex:none;width:28px;text-align:center}.hl p{margin:0;color:#cbd5e1;font-size:14px}.hl p strong{color:#fff;display:block}
+.hl div .bb{margin-left:auto;flex:none;align-self:center}
+.danger{background:#7f1d1d!important;border-color:#ef4444!important;color:#fff}
+button.cont{background:#16a34a;border-color:#16a34a;font-weight:700}
+#menu{position:fixed;inset:0;z-index:28;background:#121a23;display:none;flex-direction:column;max-width:480px;margin:0 auto;touch-action:pan-y}
+#menu.show{display:flex}
+.mtop{display:flex;align-items:center;gap:10px;padding:12px 12px 4px;font-size:18px}.mtop span{color:#fbbf24;font-size:15px;margin-left:auto}
+.mhead{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;flex:none}
+.tab{flex:none;white-space:nowrap}.tab.on{background:#3b82f6;border-color:#3b82f6}
+.mbody{flex:1;overflow-y:auto;padding:0 12px 14px}
+.chap{display:flex;justify-content:space-between;margin:14px 0 8px;color:#a9b6c3;font-size:13px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.lv{height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0;border-radius:12px}
+.lv b{font-size:18px}.lv i{font-style:normal;font-size:11px;color:#fbbf24;letter-spacing:1px}.lv i span{color:#4b5563}
+.lv.k-boss{background:rgba(249,115,22,.16);border-color:rgba(249,115,22,.55)}
+.lv.k-big{background:rgba(168,85,247,.22);border-color:rgba(168,85,247,.7)}
+.lv.k-mega{background:linear-gradient(135deg,#7c3aed,#db2777);border-color:#f0abfc}
+.lv.cur{outline:3px solid #3b82f6;outline-offset:1px}
+.lv.lock{opacity:.4}.lv.lock i{color:#cbd5e1}.lv.nope{animation:shake .3s}
+#toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.9);background:rgba(14,19,26,.9);padding:14px 22px;border-radius:16px;font-size:22px;font-weight:800;opacity:0;transition:all .35s;z-index:29;pointer-events:none;text-align:center}
+#toast small{display:block;font-size:13px;font-weight:500;color:#a9b6c3;margin-top:2px}
+#toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#home{position:fixed;inset:0;z-index:29;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#3b2f52,#120e1a 75%)}#home.show{display:flex}
+.hm{width:min(320px,86vw);display:flex;flex-direction:column;gap:10px;text-align:center}.hm h1{margin:0;font:900 40px/1.05 system-ui;color:#fbbf24;text-shadow:0 3px 0 #7c2d12}
+.hlogo{margin:0 auto;display:flex;flex-direction:column;align-items:center}.hlogo div{font-size:44px;display:flex;gap:4px;filter:drop-shadow(0 4px 3px rgba(0,0,0,.4))}.hlogo i{display:block;width:170px;height:12px;border-radius:4px;background:linear-gradient(#c08a52,#8a5a2b)}
+.hst{margin:0 0 6px;color:#a9b6c3;font-weight:700}.hm button{padding:14px;font-size:17px}.hm button.big{font-size:22px;padding:18px}
+.achb{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));z-index:80;display:flex;gap:10px;align-items:center;background:#1f2a36;border:2px solid #fbbf24;border-radius:14px;padding:8px 14px;box-shadow:0 8px 24px rgba(0,0,0,.4);min-width:260px}.achb b{font-size:30px}.achb small{display:block;color:#fbbf24;font-weight:800;font-size:11px}.achb strong{display:block;font-size:16px}.achb span{font-size:12px;color:#a9b6c3}
+.achl{display:flex;flex-direction:column;gap:6px;max-height:58vh;overflow:auto;text-align:left}.acha{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.05);border-radius:10px;padding:7px 9px;opacity:.75}.acha.got{opacity:1;background:rgba(251,191,36,.12)}.acha b{font-size:24px}.acha div{flex:1}.acha strong{display:block;font-size:14px}.acha span{font-size:12px;color:#a9b6c3}.acha i{display:block;height:5px;background:rgba(255,255,255,.12);border-radius:3px;margin-top:4px;overflow:hidden}.acha u{display:block;height:100%;background:#fbbf24}.acha small{font-size:10px;color:#a9b6c3}.acha em{font-style:normal;font-size:12px;font-weight:800;color:#fde68a}
+#upd{position:fixed;left:8px;right:8px;top:calc(58px + env(safe-area-inset-top));z-index:60;max-width:464px;margin:0 auto;display:none;align-items:center;gap:10px;background:#0f766e;color:#fff;border-radius:14px;padding:10px 12px;font:600 14px system-ui;box-shadow:0 6px 20px rgba(0,0,0,.35)}#upd.show{display:flex}#upd b{flex:1}#upd button{border:0;border-radius:10px;padding:9px 12px;font:700 14px system-ui;background:#fff;color:#0f766e}#upd .x{background:transparent;color:#fff;padding:9px 6px}.ver{opacity:.6;font-size:12px;text-align:center;margin-top:10px}
+
+/* ===== gyvesnė grafika ===== */
+#bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+#bg .blob{position:absolute;border-radius:50%;filter:blur(46px);opacity:.5;animation:blob 16s ease-in-out infinite alternate}
+@keyframes blob{50%{transform:translate(30px,-50px) scale(1.2)}100%{transform:translate(-40px,30px) scale(.9)}}
+#bg .fl{position:absolute;bottom:-70px;opacity:.17;animation:floatUp linear infinite;filter:saturate(1.2)}
+@keyframes floatUp{to{transform:translateY(-120vh) rotate(380deg)}}
+body.w1 #bg .fl{opacity:.12}
+header{background:linear-gradient(135deg,rgba(49,46,129,.94),rgba(15,23,42,.94));box-shadow:0 4px 16px rgba(0,0,0,.28);border-bottom:1px solid rgba(255,255,255,.08)}
+#lvlBtn{background:linear-gradient(#4f46e5,#3730a3);border-color:rgba(255,255,255,.25);box-shadow:0 3px 0 #1e1b4b}
+#lvlBtn small{color:#c7d2fe}
+.stats span{background:rgba(0,0,0,.28);border-radius:20px;padding:3px 10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.hbtn button{background:linear-gradient(#475569,#1e293b);box-shadow:0 3px 0 #0b1220;border-color:rgba(255,255,255,.15)}
+#strip{background:linear-gradient(90deg,rgba(15,23,42,.72),rgba(30,27,75,.62))}
+#strip .pbar{height:10px;box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+#strip .pbar i{background:linear-gradient(90deg,#22c55e,#bef264,#22c55e);background-size:200% 100%;animation:shine 1.6s linear infinite;box-shadow:0 0 8px rgba(163,230,53,.6)}
+@keyframes shine{to{background-position:-200% 0}}
+#bar{background:linear-gradient(0deg,rgba(15,23,42,.96),rgba(49,46,129,.9));border-top:1px solid rgba(255,255,255,.08)}
+#bar button{background:linear-gradient(#475569,#273449);border:1px solid rgba(255,255,255,.14);box-shadow:0 3px 0 #0b1220,inset 0 1px 0 rgba(255,255,255,.18);transition:transform .08s}
+#bar button:not(:disabled):active,.hbtn button:active,#lvlBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #0b1220}
+#bar button:not(:disabled) b{animation:bob 2.6s ease-in-out infinite}
+#bar button:nth-child(2) b{animation-delay:.3s}#bar button:nth-child(3) b{animation-delay:.6s}#bar button:nth-child(4) b{animation-delay:.9s}#bar button:nth-child(5) b{animation-delay:1.2s}#bar button:nth-child(6) b{animation-delay:1.5s}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+button.primary{background:linear-gradient(#60a5fa,#2563eb);border-color:#93c5fd;box-shadow:0 4px 0 #1e3a8a,0 6px 14px rgba(37,99,235,.35)}
+button.cont{background:linear-gradient(#4ade80,#16a34a);box-shadow:0 4px 0 #14532d}
+.card{background:linear-gradient(160deg,#2a3650,#1b2435);border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 50px rgba(0,0,0,.5);animation:cardIn .35s cubic-bezier(.3,1.5,.5,1)}
+@keyframes cardIn{from{transform:scale(.8) translateY(20px);opacity:0}}
+.stars{text-shadow:0 0 14px rgba(251,191,36,.7)}
+/* lentynų gylis */
+.shelf .row{box-shadow:inset 0 10px 14px -8px rgba(0,0,0,.35)}
+.shelf .plank::after{content:'';position:absolute;left:4px;right:4px;top:1px;height:2px;border-radius:2px;background:rgba(255,255,255,.45)}
+.shelf .plank::before{content:'';position:absolute;left:8%;right:8%;top:100%;height:10px;background:radial-gradient(ellipse at 50% 0,rgba(0,0,0,.28),transparent 70%)}
+.w0 .shelf .row{background:linear-gradient(#b08250 0,#d9b98c 22%,#cfa978)}
+.w2 .shelf .row{background:linear-gradient(rgba(255,255,255,.65),rgba(255,228,240,.5))}
+.w3 .shelf .row{background:linear-gradient(rgba(255,255,255,.55),rgba(219,234,254,.45))}
+/* prekių gyvumas */
+.it.in{animation:itIn .55s cubic-bezier(.3,1.6,.5,1) backwards}
+@keyframes itIn{from{transform:translateY(-70px) scale(.3);opacity:0}}
+.it.wig{animation:wig .7s ease-in-out}
+@keyframes wig{20%{transform:rotate(-12deg) scale(1.08)}40%{transform:rotate(10deg) scale(1.08)}60%{transform:rotate(-6deg)}80%{transform:rotate(3deg)}}
+#board.shk{animation:bshk .4s}
+@keyframes bshk{20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
+body.hurry #board{box-shadow:inset 0 0 50px rgba(239,68,68,.45);animation:hurry 1s infinite alternate}
+@keyframes hurry{to{box-shadow:inset 0 0 20px rgba(239,68,68,.25)}}
+.ring{position:absolute;left:0;top:0;border-radius:50%;border:4px solid #fde047;box-shadow:0 0 14px #fde047}
+.str{position:absolute;left:0;top:0;font-size:16px;line-height:1}
+#conf{position:fixed;inset:0;z-index:31;pointer-events:none}
+.hlogo div span{display:inline-block;animation:hop 1.4s ease-in-out infinite}
+.hlogo div span:nth-child(2){animation-delay:.18s}.hlogo div span:nth-child(3){animation-delay:.36s}
+@keyframes hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-16px) rotate(-8deg)}60%{transform:translateY(0) scale(1.1,.9)}}
+.hm h1{background:linear-gradient(#fde68a,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 3px 0 #7c2d12)}
+#home{background:radial-gradient(circle at 30% 20%,#6d28d9 0,transparent 45%),radial-gradient(circle at 80% 80%,#db2777 0,transparent 45%),#160f24}
+#lvlBtn b,#lvlBtn small,.stats span{white-space:nowrap}.stats{gap:6px;font-size:14px}
+</style>
+</head>
+<body class="w0">
+<div id="bg"></div>
+<div id="app">
+  <header>
+    <button id="lvlBtn"><b id="lvlLabel">Lygis 1</b><small id="worldLabel"></small></button>
+    <div class="stats"><span id="tbox">⏱ <b id="time">0:00</b></span><span>📦 <b id="left">0</b></span></div>
+    <div class="hbtn"><button id="hint" title="Užuominos">💡</button><button id="pause" title="Meniu">☰</button></div>
+  </header>
+  <div id="strip"></div>
+  <div id="board"><div id="top"><div id="grid"></div><div id="elev"></div></div><div id="conv"></div></div>
+  <div id="bar"></div>
+</div>
+<div id="fx"></div>
+<canvas id="conf"></canvas>
+<div id="toast"></div>
+<div id="menu"></div>
+<div id="home"></div>
+<div id="upd"><b id="updt"></b><button id="updb">Atnaujinti</button><button class="x" id="updx">✕</button></div>
+<div id="overlay"><div class="card" id="card"></div></div>
+<script>
+/* ===================== ŽAIDIMO VARIKLIS (be grafikos) =====================
+   Deterministinis: tas pats lygio numeris -> tas pats išdėstymas.
+   Lentyna turi 3 vietas (siaura – 2) ir kelis sluoksnius: matomas tik priekinis, už jo – kitas.
+   Kai priekinis sluoksnis ištuštėja, atslenka kitas. 3 vienodos prekės vienoje lentynoje – išvalomos.
+   Lygiai kuriami atbuline eiga nuo sprendimo – visada išsprendžiami. */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffle(a,r){for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+/* prekių grupės (~180 skirtingų). Lygyje kiekviena prekė būna tik vienu trejetu – jokių pasikartojimų */
+const GOODS={
+ vaisiai:['🍎','🍏','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🧄','🧅','🥔','🍠','🫒','🥜','🌰'],
+ kepiniai:['🥐','🥯','🍞','🥖','🥨','🧀','🥞','🧇','🍰','🎂','🧁','🥧','🍫','🍬','🍭','🍮','🍯','🍩','🍪','🍦','🍧','🍨','🥮','🍡','🥠'],
+ patiekalai:['🍖','🍗','🥩','🥓','🍔','🍟','🍕','🌭','🥪','🌮','🌯','🥙','🧆','🥚','🍳','🥘','🍲','🥗','🍿','🧈','🥫','🍱','🍘','🍙','🍚','🍛','🍜','🍝','🍣','🍤','🍥','🥟','🦪','🦞','🦀','🦐','🦑','🐟','🍢'],
+ gerimai:['🥛','☕','🍵','🧃','🥤','🧋','🧉','🍼'],
+ namams:['🧴','🧻','🧼','🧽','🪥','🧹','🧺','🪣','🕯️','🧷','🧵','🧶','🪡','🔋','💡','🔦','🧯','🪒'],
+ zaislai:['🧸','🎈','⚽','🏀','🏈','⚾','🎾','🏐','🎱','🎲','🧩','🪀','🪁','🎨','🎸','🎺','🥁','🎻','🪃','🪅','🪆','🎯','🛼','🛹','🚗','🚂','🚀','🤖','🦆','🎳','🏓','🏸','🥏','🎮','🪄'],
+ drabuziai:['👕','👖','👗','👚','👒','🧢','🎩','👟','👠','👢','🧦','🧤','🧣','🕶️','🎒','👜','👛','💍','⌚'],
+};
+const ALL_GOODS=[...new Set(Object.values(GOODS).flat())];
+/* temos keičiasi kas 25 lygius (išvaizda ir pagrindinės prekės) */
+const WORLDS=[
+ {name:'Parduotuvė',emoji:'🛒',items:[...GOODS.vaisiai,...GOODS.gerimai,...GOODS.namams],
+  sk:{lock:['🔒','Užrakinta lentyna'],frozen:['🧊','Šaldytos prekės'],hidden:['🛍️','Prekės maišeliuose'],dark:['🌑','Tamsus sandėlis'],small:['📏','Siauros lentynos'],conv:['🛻','Konvejeris'],elev:['🛗','Kylančios lentynos']}},
+ {name:'Grilis',emoji:'🍢',items:[...GOODS.patiekalai,...GOODS.vaisiai.slice(17)],
+  sk:{lock:['⛓️','Uždengti iešmai'],frozen:['🔥','Dar kepa'],hidden:['🌿','Po prieskoniais'],dark:['💨','Dūmai'],small:['🥢','Trumpi iešmai'],conv:['🛻','Besisukantis grilis'],elev:['🛗','Kylantys iešmai']}},
+ {name:'Kepykla',emoji:'🧁',items:[...GOODS.kepiniai,...GOODS.vaisiai.slice(0,17),...GOODS.gerimai],
+  sk:{lock:['🔒','Užrakintos vitrinos'],frozen:['❄️','Šaldyti desertai'],hidden:['📦','Dėžutės'],dark:['🌫️','Miltų debesys'],small:['📏','Siauros lentynėlės'],conv:['🛻','Konvejeris'],elev:['🛗','Kylančios vitrinos']}},
+ {name:'Žaislai',emoji:'🧸',items:[...GOODS.zaislai,...GOODS.drabuziai],
+  sk:{lock:['🔒','Užrakintos lentynos'],frozen:['🎀','Supakuoti žaislai'],hidden:['❓','Staigmenos'],dark:['🌙','Naktis parduotuvėje'],small:['📏','Siauros lentynos'],conv:['🛻','Konvejeris'],elev:['🛗','Kylančios lentynos']}},
+];
+const STAGE=25,MAXL=1000;
+const cyc=L=>Math.floor((L-1)/STAGE),qOf=L=>(L-1)%STAGE+1,worldOf=L=>WORLDS[cyc(L)%WORLDS.length];
+const kindOf=L=>{const q=qOf(L);return q===STAGE?'big':q===12?'boss':'n'},KICON={n:'',boss:' 🔥',big:' 👑'};
+/* kiekviename 25 lygių rate sunkumai pasirodo iš eilės; iki 25 lygio – visi */
+const MECH_ORDER=['lock','conv','frozen','elev','hidden','dark','small'],MECH_Q=[4,7,10,13,16,19,22];
+const MECH_IL=MECH_ORDER.map((m,i)=>MECH_Q[i]);   // pirmo rato įvedimo lygiai
+function mechsOf(L){
+  const c=cyc(L),q=qOf(L),pr=rng(L*977+5),kd=kindOf(L);
+  const avail=MECH_ORDER.filter((m,i)=>MECH_Q[i]<=q);if(!avail.length)return [];
+  const intro=MECH_ORDER.filter((m,i)=>MECH_Q[i]===q);
+  let k=1+Math.floor(q/9)+Math.min(2,Math.floor(c/4))+(kd==='big'?2:kd==='boss'?1:0);
+  if(q%3===2)k--;            // atokvėpio lygiai
+  k=Math.max(intro.length?1:0,Math.min(k,avail.length));
+  const on=new Set(intro);
+  for(const m of shuffle(avail.slice(),pr)){if(on.size>=k)break;on.add(m)}
+  return [...on]}
+function params(L){
+  const c=cyc(L),q=qOf(L),pr=rng(L*1013+11),kd=kindOf(L);
+  const big=kd==='big',boss=kd!=='n',easy=!boss&&q%3===2;
+  const cc=Math.min(c,12),D=Math.min(1,q/STAGE*.75+cc*.04+(big?.12:boss?.06:0)),f=.5+q/STAGE*.5;
+  const on=new Set(mechsOf(L));
+  let K,depth;
+  if(L===1){K=3;depth=1}
+  else if(L===2){K=4;depth=2}
+  else if(L===3){K=6;depth=2}
+  else{K=Math.round(4+q*1.25+cc*1.3+D*5+(big?6:boss?3:0));if(easy)K=Math.round(K*.85);K=Math.min(K,50);
+    depth=Math.min(6,2+Math.floor((q+cc*2)/9)+(boss?1:0))}
+  const T=K;   // kiekviena prekė – tik vienas trejetas
+  // prekės: pirmiausia iš temos, trūkstamos – iš visų likusių; kiekviename lygyje vis kitos
+  const W=worldOf(L),r2=rng(L*31337+3),own=shuffle(W.items.slice(),r2);
+  const rest=shuffle(ALL_GOODS.filter(x=>!W.items.includes(x)),r2);
+  const mixN=c>=4?Math.round(K*.3):0;
+  const items=[...new Set([...own.slice(0,K-mixN),...rest.slice(0,mixN),...own,...rest])].slice(0,K);
+  const N=3*K;let S=Math.max(4,Math.ceil(N/(3*depth*.8)));
+  const conv=on.has('conv')?Math.min(5,3+Math.round(f)+(boss?1:0)):0,elev=on.has('elev')?3+(q>=18?1:0):0;
+  S=Math.max(S,conv+elev+(conv&&elev?3:2));
+  if(S>12+Math.floor((conv+elev)/2)){S=12+Math.floor((conv+elev)/2);depth=Math.ceil(N/(S*3*.8))}
+  if(L===1)S=4;
+  const free=L<=3?3:Math.max(3,Math.round(S*(.75-D*.35)));
+  const small=on.has('small')?1+Math.round(f):0;
+  const lockN=on.has('lock')?Math.min(2,1+(q>=14?1:0)):0,lockAt=[];for(let i=0;i<lockN;i++)lockAt.push(Math.max(2,Math.min(K-2,3+i*2+Math.floor(pr()*2)+(boss?1:0))));
+  const mech={on:[...on],lockN,lockAt,frozen:on.has('frozen')?.1+.12*f:0,hidden:on.has('hidden')?.25+.25*f:0,dark:on.has('dark'),small,conv,elev,
+    convSpd:(16+D*18)*(pr()<.5?1:-1),elevSpd:12+D*14};
+  const time=L<=3?180:Math.max(100,Math.round(N*(big?2.9:boss?3.2:3.6)+30));
+  return {L,ll:q,c,K,T,N,S,depth,free,time,parTime:Math.round(N*1.7+8),boss,big,easy,D,mech,items,chalOn:L>2};
+}
+/* --- lygio kūrimas atbuline eiga: nuo tuščių lentynų „atžaidžiam“ sprendimą atgal,
+   todėl kiekvienas lygis garantuotai išsprendžiamas, o sprendimas žinomas (užuominoms ir normoms) --- */
+function buildRev(p,r){
+  const caps=[];for(let i=0;i<p.S;i++)caps.push(3);for(let i=0;i<p.mech.small;i++)caps.push(2);shuffle(caps,r);
+  const n=caps.length,st=caps.map(c=>({cap:c,front:new Array(c).fill(null),hid:[]}));
+  const dt=caps.map(c=>p.L===1?2:Math.max(1,(c===2?p.depth-1:p.depth)+(r()<.3?-1:0)+(r()<.2?1:0)));
+  const tri=[];const ty=shuffle([...Array(p.T).keys()],r);for(let k=0;k<p.K;k++)tri.push(k<p.T?ty[k]:ty[Math.floor(r()*p.T)]);shuffle(tri,r);
+  const ops=[];let placed=0,uid=0;
+  // užrakintos lentynos parenkamos iš anksto: atbuline eiga jų neliečiam, kol pirmyn nebus išvalyta lockAt trejetų
+  const LK=new Array(n).fill(0);{const cand=caps.map((c,i)=>i).filter(i=>caps[i]===3);shuffle(cand,r);(p.mech.lockAt||[]).forEach((t,k)=>{if(k<cand.length-2)LK[cand[k]]=t})}
+  const blocked=(i,x)=>LK[i]>0&&p.K-placed-x<LK[i];
+  const freeOf=s=>s.front.filter(x=>!x).length,itemsOf=s=>s.front.filter(Boolean).length;
+  const isTri=f=>f.length===3&&f.every(Boolean)&&f[0].t===f[1].t&&f[1].t===f[2].t;
+  const frontFree=()=>st.reduce((a,s)=>a+freeOf(s),0);
+  // perkelti prekę iš b į a (atgal); pirmyn tai bus ėjimas a -> b
+  const canTake=(b,k)=>{const s=st[b];if(!s.front[k]||blocked(b,0))return false;if(s.hid.length&&itemsOf(s)===1)return false;return true};
+  const unmove=(b,k,a,match)=>{const B=st[b],A=st[a],c=B.front[k];const fr=A.front.map((x,j)=>x?-1:j).filter(j=>j>=0);if(!fr.length)return false;
+    const j=fr[Math.floor(r()*fr.length)];A.front[j]=c;if(isTri(A.front)){A.front[j]=null;return false}B.front[k]=null;ops.push({a,ia:j,b,ib:k,match});return true};
+  const targets=(ex,x=0)=>st.map((s,i)=>i).filter(i=>i!==ex&&freeOf(st[i])>0&&!blocked(i,x));
+  const pick=a=>a[Math.floor(r()*a.length)];
+  const newTri=(b)=>{const t=tri[placed],B=st[b];B.front=[{t,thr:0,hid:false,id:uid++},{t,thr:0,hid:false,id:uid++},{t,thr:0,hid:false,id:uid++}];
+    const tg=targets(b,1);if(!tg.length||blocked(b,1)){B.front=[null,null,null];return false}for(let tries=0;tries<6;tries++){const a=pick(tg);if(unmove(b,Math.floor(r()*3),a,true)){placed++;return true}}B.front=[null,null,null];return false};
+  const scr=Math.round(p.K*(.25+p.D*1.1)),stepsMax=p.K*40+200;let scrDone=0;
+  for(let step=0;step<stepsMax&&placed<p.K;step++){
+    const empt=st.map((s,i)=>i).filter(i=>st[i].cap===3&&!itemsOf(st[i])&&!st[i].hid.length&&!blocked(i,1));
+    const deep=st.map((s,i)=>i).filter(i=>itemsOf(st[i])>0&&st[i].hid.length+1<dt[i]&&!blocked(i,1));
+    const ff=frontFree(),x=r();
+    if(scrDone<scr*placed/p.K&&x<.5){ // maišymas
+      const src=[];st.forEach((s,b)=>s.front.forEach((c,k)=>{if(c&&canTake(b,k))src.push([b,k])}));
+      if(src.length){const [b,k]=pick(src),tg=targets(b);if(tg.length&&unmove(b,k,pick(tg),false))scrDone++}continue}
+    if(deep.length&&(ff<=p.free+2||!empt.length||x<.55)){ // gilinimas: priekis -> atgal
+      const a=pick(deep),A=st[a],save=A.front.slice();A.hid.unshift(save);A.front=new Array(A.cap).fill(null);
+      if(A.cap===3&&r()<.65){if(newTri(a))continue}
+      else{const src=[];st.forEach((s,b)=>{if(b!==a)s.front.forEach((c,k)=>{if(c&&canTake(b,k))src.push([b,k])})});
+        if(src.length){const [b,k]=pick(src);if(unmove(b,k,a,false))continue}}
+      A.front=A.hid.shift();continue}
+    if(empt.length){newTri(pick(empt));continue}
+    // nėra tuščios lentynos ir negalima gilinti – gilinam bet kurią
+    const any=st.map((s,i)=>i).filter(i=>st[i].cap===3&&itemsOf(st[i])>0&&!blocked(i,1));if(!any.length)return null;
+    const a=pick(any),A=st[a];A.hid.unshift(A.front.slice());A.front=new Array(3).fill(null);if(!newTri(a))A.front=A.hid.shift();
+  }
+  if(placed<p.K)return null;
+  for(let k=0;k<Math.round(scr*.2);k++){const src=[];st.forEach((s,b)=>s.front.forEach((c,k2)=>{if(c&&canTake(b,k2))src.push([b,k2])}));if(!src.length)break;const [b,k2]=pick(src),tg=targets(b);if(tg.length)unmove(b,k2,pick(tg),false)}
+  if(frontFree()<1)return null;
+  const sh=st.map(s=>({cap:s.cap,lock:0,li:0,layers:[s.front.slice(),...s.hid.map(l=>l.slice())],front:null}));
+  sh.forEach(s=>{s.front=s.layers[0].slice()});
+  const sol=ops.reverse();
+  // ribos užšalimui/užraktams pagal sprendimą: kiek trejetų jau išvalyta iki pirmo prekės/lentynos panaudojimo
+  const firstMv={},shFirst=new Array(n).fill(1e9);let mm=0;
+  // atkartojam sprendimą, kad sužinotume prekių judėjimą
+  const sim=JSON.parse(JSON.stringify(sh));const ids=[];
+  for(const o of sol){const A=sim[o.a],B=sim[o.b],c=A.front[o.ia];if(!c||LK[o.a]>mm||LK[o.b]>mm)return null;if(firstMv[c.id]==null)firstMv[c.id]=mm;shFirst[o.a]=Math.min(shFirst[o.a],mm);shFirst[o.b]=Math.min(shFirst[o.b],mm);
+    B.front[o.ib]=c;A.front[o.ia]=null;
+    if(B.cap===3&&isTri(B.front)){B.front.forEach(x=>{if(firstMv[x.id]==null)firstMv[x.id]=mm});B.front=[null,null,null];mm++}else if(o.match)return null;
+    for(const X of [A,B])while(X.front.every(v=>!v)&&X.li+1<X.layers.length){X.li++;X.front=X.layers[X.li].slice()}}
+  if(sim.some(s=>s.front.some(Boolean)||s.li<s.layers.length-1))return null;
+  const M=p.mech;
+  if(M.frozen)sh.forEach(s=>s.layers.forEach((l,li)=>l.forEach(c=>{if(c&&r()<M.frozen){const mx=Math.min(firstMv[c.id]||0,3+Math.round(4*p.D));if(mx>=1)c.thr=Math.max(1,mx-Math.floor(r()*2))}})));
+  if(M.hidden)sh.forEach(s=>s.layers.forEach((l,li)=>l.forEach(c=>{if(c&&r()<M.hidden*(li?1:.5))c.hid=true})));
+  sh.forEach((s,i)=>{s.lock=LK[i]});
+  // judančios lentynos (konvejeris, keltuvas) – tik išvaizda ir laikas, logika ta pati
+  {const free_=shuffle(sh.map((s,i)=>i).filter(i=>!LK[i]),r);for(let k=0;k<M.conv&&free_.length;k++)sh[free_.pop()].mv='conv';for(let k=0;k<M.elev&&free_.length;k++)sh[free_.pop()].mv='elev'}
+  sh.forEach(s=>{s.front=s.layers[0].slice();s.layers.forEach(l=>l.forEach(c=>{if(c)delete c.id}))});
+  return {sh,sol};
+}
+function generate(L){
+  const p=params(L);
+  // ieškom varianto, kuriame priekyje pakanka laisvų vietų (lengvuose lygiuose – daugiau)
+  const want=Math.min(p.free,p.ll<=10?4:3);let best=null,bf=-1;
+  for(let attempt=0;attempt<40;attempt++){const res=buildRev(p,rng(L*7919+attempt*104729+13));if(!res)continue;
+    const ff=res.sh.reduce((a,s)=>a+s.front.filter(x=>!x).length,0);if(ff>bf){bf=ff;best=res}if(ff>=want)break}
+  return {...p,sh:best.sh,sol:best.sol,parMoves:best.sol.length+Math.max(2,Math.round(best.sol.length*.1))}}
+/* --- sprendėjas: DFS su euristika ir aplankytų būsenų atmintimi --- */
+function toS(sh,m){let r=0;const o={m,sh:sh.map(s=>{const lay=s.layers.map(l=>l.filter(Boolean).map(c=>({t:c.t,thr:c.thr})));const fr=s.front.filter(Boolean).map(c=>({t:c.t,thr:c.thr}));
+  r+=fr.length;for(let k=s.li+1;k<lay.length;k++)r+=lay[k].length;return {cap:s.cap,lock:s.lock,li:s.li,lay,fr}})};o.r=r;return o}
+function sKey(s){let k=s.m+'|';for(const x of s.sh){k+=x.li+':'+x.fr.map(c=>c.thr>s.m?c.t+'f'+c.thr:c.t).sort().join(',')+'/'}return k}
+function sMoves(s){const out=[],m=s.m,S=s.sh;
+  for(let a=0;a<S.length;a++){const A=S[a];if(A.lock>m||!A.fr.length)continue;
+    const seenT=new Set(),lastA=A.li>=A.lay.length-1;
+    for(const c of A.fr){if(c.thr>m||seenT.has(c.t))continue;seenT.add(c.t);const t=c.t,cA=A.fr.filter(x=>x.t===t).length,allSame=A.fr.every(x=>x.t===t);
+      let emptySeen=new Set();
+      for(let b=0;b<S.length;b++){if(b===a)continue;const B=S[b];if(B.lock>m||B.fr.length>=B.cap)continue;
+        if(!B.fr.length){if(lastA&&allSame)continue;const ek=B.cap+'_'+(B.li>=B.lay.length-1);if(emptySeen.has(ek))continue;emptySeen.add(ek)}
+        const cB=B.fr.filter(x=>x.t===t).length;let sc=0;
+        if(B.cap===3&&cB===2&&B.fr.length===2)sc=1000;
+        else{if(A.fr.length===1&&!lastA)sc+=40;if(A.fr.length===1)sc+=15;if(cB&&cB===B.fr.length)sc+=30+cB*5;else if(cB)sc+=10;if(!cB&&B.fr.length)sc-=25;if(cA>=2)sc-=30;if(B.cap<3)sc-=12;if(!B.fr.length)sc-=5}
+        out.push({a,t,b,sc})}}}
+  out.sort((x,y)=>y.sc-x.sc);return out}
+function sApply(s,mv){const S=s.sh.slice(),A={...S[mv.a],fr:S[mv.a].fr.slice()},B={...S[mv.b],fr:S[mv.b].fr.slice()};S[mv.a]=A;S[mv.b]=B;
+  const i=A.fr.findIndex(c=>c.t===mv.t&&c.thr<=s.m);const c=A.fr.splice(i,1)[0];B.fr.push(c);let m=s.m,r=s.r;
+  if(B.cap===3&&B.fr.length===3&&B.fr[0].t===B.fr[1].t&&B.fr[1].t===B.fr[2].t){B.fr=[];m++;r-=3}
+  for(const X of [A,B])while(!X.fr.length&&X.li+1<X.lay.length){X.li++;X.fr=X.lay[X.li].slice()}
+  return {m,r,sh:S}}
+function solve(s0,limit){const seen=new Set(),path=[];let nodes=0;
+  const rec=s=>{if(s.r===0)return true;if(++nodes>limit)return false;const k=sKey(s);if(seen.has(k))return false;seen.add(k);
+    for(const mv of sMoves(s)){path.push(mv);if(rec(sApply(s,mv)))return true;path.pop();if(nodes>limit)return false}return false};
+  return rec(s0)?path.slice():null}
+/* --- žaidimo būsena --- */
+class Game{
+  constructor(L){const g=generate(L);Object.assign(this,g);this.status='play';this.moves=0;this.m=0;this.combo=0;this.maxCombo=0;this.lastMatch=-1e9;this.hist=[];this.used=0;this.firstType=null;
+    this.el=0;this.started=false;this.freeze=0;this.extraT=0;this.cleared=0;
+    const r=rng(L*31+7);
+    if(this.chalOn){const ct=['combo','first','noboost'][Math.floor(r()*3)];
+      this.chal=ct==='combo'?{type:'combo',n:this.K>=10?3:2}:ct==='first'?{type:'first',t:Math.floor(r()*this.T)}:{type:'noboost'}}else this.chal=null}
+  get timeLimit(){return this.time+this.extraT}
+  remaining(){let r=0;for(const s of this.sh){r+=s.front.filter(Boolean).length;for(let k=s.li+1;k<s.layers.length;k++)r+=s.layers[k].filter(Boolean).length}return r}
+  unlocked(i){return this.m>=this.sh[i].lock}
+  movable(c){return !!c&&c.thr<=this.m}
+  canDrop(b){return this.unlocked(b)&&this.sh[b].front.some(x=>!x)}
+  snap(){return JSON.stringify({sh:this.sh,m:this.m,moves:this.moves,cleared:this.cleared})}
+  restore(s){const o=JSON.parse(s);this.sh=o.sh;this.m=o.m;this.moves=o.moves;this.cleared=o.cleared}
+  hasMove(){for(let a=0;a<this.sh.length;a++){if(!this.unlocked(a)||!this.sh[a].front.some(c=>this.movable(c)))continue;for(let b=0;b<this.sh.length;b++)if(b!==a&&this.canDrop(b))return true}return false}
+  move(a,ia,b,ib,now){
+    const A=this.sh[a],B=this.sh[b];if(a===b||!this.unlocked(a)||!this.movable(A.front[ia])||!this.canDrop(b))return null;
+    this.hist.push(this.snap());if(this.hist.length>40)this.hist.shift();
+    if(ib==null||B.front[ib])ib=B.front.findIndex(x=>!x);
+    B.front[ib]=A.front[ia];A.front[ia]=null;this.moves++;
+    const ev={a,ia,b,ib,matched:[],adv:[],thaw:[],unlock:[]};this.resolve(ev,now);return ev}
+  resolve(ev,now){
+    const m0=this.m;
+    for(let i=0;i<this.sh.length;i++){const s=this.sh[i],f=s.front;
+      if(s.cap===3&&f.every(Boolean)&&f[0].t===f[1].t&&f[1].t===f[2].t){ev.matched.push({s:i,t:f[0].t});s.front=[null,null,null];this.m++;this.cleared+=3;
+        if(this.firstType==null)this.firstType=f[0].t;
+        this.combo=now-this.lastMatch<=6000?this.combo+1:1;this.lastMatch=now;this.maxCombo=Math.max(this.maxCombo,this.combo)}}
+    if(this.m>m0){this.sh.forEach(s=>s.front.forEach(c=>{if(c&&c.hid){c.hid=false;c.rev=1}}));
+      this.sh.forEach((s,i)=>{if(s.lock>m0&&s.lock<=this.m)ev.unlock.push(i);s.front.forEach((c,k)=>{if(c&&c.thr>m0&&c.thr<=this.m)ev.thaw.push([i,k])})})}
+    for(let i=0;i<this.sh.length;i++){const s=this.sh[i];
+      while(s.front.every(x=>!x)&&s.li+1<s.layers.length){s.li++;s.front=s.layers[s.li].slice();ev.adv.push(i)}}
+    ev.combo=ev.matched.length?this.combo:0;
+    if(ev.adv.length&&this.sh.some(s=>s.cap===3&&s.front.every(Boolean)&&s.front[0].t===s.front[1].t&&s.front[1].t===s.front[2].t))this.resolve(ev,now);
+    return ev}
+  hint(){const st=toS(this.sh,this.m),mvs=sMoves(st);if(!mvs.length)return null;
+    let mv=mvs[0];if(mv.sc<1000){const sol=solve(st,3000);if(sol&&sol.length)mv=sol[0]}const A=this.sh[mv.a];
+    const ia=A.front.findIndex(c=>c&&c.t===mv.t&&c.thr<=this.m);return {a:mv.a,ia,b:mv.b}}
+  addShelf(){this.sh.push({cap:3,lock:0,li:0,layers:[[null,null,null]],front:[null,null,null],bonus:1})}
+  shuffleFront(r){const pos=[],cells=[];this.sh.forEach((s,i)=>{if(!this.unlocked(i))return;s.front.forEach((c,k)=>{if(this.movable(c)){pos.push([i,k]);cells.push(c)}})});
+    for(let t=0;t<20;t++){shuffle(cells,r);pos.forEach(([i,k],j)=>this.sh[i].front[k]=cells[j]);
+      if(!this.sh.some(s=>s.cap===3&&s.front.every(Boolean)&&s.front[0].t===s.front[1].t&&s.front[1].t===s.front[2].t)||t===19)break}}
+  magnet(now){ // išvalo 3 tos rūšies prekes, kurių priekyje matosi daugiausia
+    const cnt={};this.sh.forEach((s,i)=>s.front.forEach(c=>{if(c)cnt[c.t]=(cnt[c.t]||0)+1}));
+    const tot={};this.sh.forEach(s=>{s.front.forEach(c=>{if(c)tot[c.t]=(tot[c.t]||0)+1});for(let k=s.li+1;k<s.layers.length;k++)s.layers[k].forEach(c=>{if(c)tot[c.t]=(tot[c.t]||0)+1})});
+    const ts=Object.keys(cnt).map(Number).filter(t=>tot[t]>=3).sort((x,y)=>cnt[y]-cnt[x]);if(!ts.length)return null;const t=ts[0];
+    this.hist.push(this.snap());let left=3;const took=[];
+    this.sh.forEach((s,i)=>s.front.forEach((c,k)=>{if(left&&c&&c.t===t){s.front[k]=null;left--;took.push([i,k])}}));
+    for(let d=1;left&&d<10;d++)this.sh.forEach(s=>{const k0=s.li+d;if(!left||k0>=s.layers.length)return;const l=s.layers[k0];l.forEach((c,k)=>{if(left&&c&&c.t===t){l[k]=null;left--}})});
+    this.sh.forEach(s=>{for(let k=s.layers.length-1;k>s.li;k--)if(s.layers[k].every(x=>!x))s.layers.splice(k,1)});
+    const m0=this.m;this.m++;this.cleared+=3;if(this.firstType==null)this.firstType=t;
+    const ev={matched:[],adv:[],thaw:[],unlock:[],took,t};
+    this.sh.forEach(s=>s.front.forEach(c=>{if(c&&c.hid){c.hid=false;c.rev=1}}));
+    this.sh.forEach((s,i)=>{if(s.lock>m0&&s.lock<=this.m)ev.unlock.push(i);s.front.forEach((c,k)=>{if(c&&c.thr>m0&&c.thr<=this.m)ev.thaw.push([i,k])})});
+    for(let i=0;i<this.sh.length;i++){const s=this.sh[i];while(s.front.every(x=>!x)&&s.li+1<s.layers.length){s.li++;s.front=s.layers[s.li].slice();ev.adv.push(i)}}
+    return ev}
+  stars(){return 1+(this.el<=this.parTime*1000?1:0)+(this.moves<=this.parMoves?1:0)+(this.chalOk()?1:0)}
+  chalOk(){const c=this.chal;if(!c)return false;if(c.type==='combo')return this.maxCombo>=c.n;if(c.type==='first')return this.firstType===c.t;if(c.type==='noboost')return this.used===0&&this.status==='win';return false}
+}
+
+</script>
+<script>
+/* ===================== VALDYMAS ===================== */
+const VERSION='1.2.0';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let unlocked=store.get('prekes.unlocked',1),level=store.get('prekes.level',1),best=store.get('prekes.stars',{});
+let game=null,gen=0,curWorld=null,busy=false,sel=null,hintMv=null;const ANIM={adv:new Set(),drop:null,thaw:new Set(),unl:new Set(),rev:new Set(),intro:false,n:0};
+const fmt=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const W=()=>worldOf(level),EM=t=>game.items[t];
+function toast(t,s){const el=$('toast');el.innerHTML=t+(s?`<small>${s}</small>`:'');el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2600)}
+function showCard(html){$('card').innerHTML=html;$('overlay').classList.add('show')}
+const closeCard=()=>$('overlay').classList.remove('show');
+
+function newGame(L,showWorld,mode){
+  if(mode!=='daily'&&DAILY.on&&L!==DAILY.L)DAILY.on=false;
+  PZ.on=false;if(L<1)L=1;if(!mode){while(L>1&&!playable(L))L--}
+  gen++;level=L;if(!mode)store.set('prekes.level',level);$('menu').classList.remove('show');closeCard();
+  game=new Game(level);LAY.ph=0;LAY.pe2=0;sel=null;hintMv=null;busy=false;$('fx').innerHTML='';
+  const w=worldOf(level);document.body.className='w'+(cyc(level)%4);
+  $('lvlLabel').textContent=mode==='daily'?'📅 Dienos':'Lygis '+level+KICON[kindOf(level)];
+  $('worldLabel').textContent=w.emoji+' Etapas '+(cyc(level)+1)+' · '+qOf(level)+'/'+STAGE;
+  if(curWorld!==w){curWorld=w;setBg(w)}musicFor(w);ANIM.intro=true;
+  layoutBoard();render();renderHUD();renderBar();
+  const kd=kindOf(level);
+  if(HOME.on){}
+  else if(MECH_IL.includes(level))toast(MECH_ORDER.filter((m,i)=>MECH_IL[i]===level).map(m=>w.sk[m].join(' ')).join(' · '),'Naujovė!');
+  else if(showWorld||qOf(level)===1)toast(w.emoji+' Etapas '+(cyc(level)+1),'Naujos prekės · '+STAGE+' lygių');
+  else if(MECH_Q.includes(qOf(level))&&level>STAGE)toast(MECH_ORDER.filter((m,i)=>MECH_Q[i]===qOf(level)).map(m=>w.sk[m].join(' ')).join(' · '),'Vėl sugrįžta');
+  else if(kd!=='n'){toast({boss:'🔥 Bosas',big:'👑 Etapo bosas'}[kd],'Daugiau prekių, mažiau laiko');setTimeout(()=>sfx('boss'),300)}
+  const hi=hintItems(),seen=store.get('prekes.seenHints',{}),fresh=hi.filter(h=>h[0]!=='chal'&&!seen[h[0]]);
+  $('hint').classList.toggle('new',hi.some(h=>h[0]!=='chal'&&h[0]!=='basic'&&h[0]!=='layers'));
+  if(fresh.length&&!mode){const g0=gen;setTimeout(()=>{if(gen===g0&&game.moves===0&&!HOME.on&&!$('overlay').classList.contains('show'))showHints()},700)}
+}
+/* --- lentynų išdėstymas: viskas telpa ekrane be slinkimo; konvejeris apačioje, keltuvas dešinėje --- */
+const LAY={sz:50,pc:0,Lc:1,pe:0,Le:1,ph:0,pe2:0};
+function layoutBoard(){
+  const b=$('board'),g=game,n=g.sh.filter(s=>!s.mv).length,kc=g.sh.filter(s=>s.mv==='conv').length,ke=g.sh.filter(s=>s.mv==='elev').length;
+  const bw=b.clientWidth-12,bh=b.clientHeight-12,gx=8,gy=10;let best=null;
+  for(let sz=84;sz>=26&&!best;sz--){const shW=3*sz+12,shH=1.46*sz+13;
+    for(const c of [1,2,3,4]){if(c===1&&n>3)continue;const rows=Math.ceil(Math.max(n,1)/c);
+      const w=c*shW+(c-1)*gx+(ke?shW+gx+4:0),h=rows*shH+(rows-1)*gy+(kc?shH+gy+10:0);
+      if(w<=bw&&h<=bh&&(!ke||bh-(kc?shH+gy+10:0)>=shH*1.6)){best={sz,c};break}}}
+  if(!best)best={sz:26,c:3};const sz=best.sz,shW=3*sz+12,shH=1.46*sz+13;
+  b.style.setProperty('--sz',sz+'px');const gr=$('grid');gr.style.gridTemplateColumns=`repeat(${best.c},auto)`;gr.style.columnGap=gx+'px';gr.style.rowGap=gy+'px';
+  const ce=$('conv'),ee=$('elev');ce.style.display=kc?'block':'none';ee.style.display=ke?'block':'none';
+  ce.style.height=(shH+10)+'px';ee.style.width=(shW+4)+'px';
+  LAY.sz=sz;LAY.pc=shW+18;LAY.Lc=Math.max(kc*LAY.pc,bw+LAY.pc);LAY.pe=shH+16;
+  requestAnimationFrame(()=>{LAY.Le=Math.max(ke*LAY.pe,ee.clientHeight+LAY.pe)})}
+window.addEventListener('resize',()=>{if(game){layoutBoard();render()}});
+const md=(a,m)=>((a%m)+m)%m;
+let rafT=performance.now();
+function moveBands(t){const dt=Math.min(100,t-rafT);rafT=t;const g=game;
+  if(g&&g.status==='play'&&!PZ.on&&!HOME.on&&!$('overlay').classList.contains('show')&&!$('menu').classList.contains('show')){LAY.ph+=g.mech.convSpd*dt/1000;LAY.pe2+=g.mech.elevSpd*dt/1000}
+  if(g){const ce=$('conv'),ee=$('elev');
+    if(ce.style.display!=='none'){ce.querySelectorAll('.shelf').forEach((e,j)=>{e.style.transform=`translate(${md(j*LAY.pc+LAY.ph,LAY.Lc)-LAY.pc+6}px,4px)`});ce.style.backgroundPositionX=LAY.ph+'px'}
+    if(ee.style.display!=='none'){ee.querySelectorAll('.shelf').forEach((e,j)=>{e.style.transform=`translate(2px,${md(j*LAY.pe-LAY.pe2,LAY.Le)-LAY.pe}px)`});ee.style.backgroundPositionY=(-LAY.pe2)+'px'}}
+  requestAnimationFrame(moveBands)}
+requestAnimationFrame(moveBands);
+function itemHTML(c,s,k){
+  const g=game,mv=g.unlocked(s)&&g.movable(c);let cls='it',inner=EM(c.t),extra='';
+  if(c.hid){cls+=' hid';inner='?';extra=`<sub>${W().sk.hidden[0]}</sub>`}
+  if(c.thr>g.m){cls+=' frz';extra+=`<em>${W().sk.frozen[0]}${c.thr-g.m}</em>`}
+  if(ANIM.adv.has(s))cls+=' adv';if(ANIM.drop&&ANIM.drop[0]===s&&ANIM.drop[1]===k)cls+=' drop';if(ANIM.thaw.has(s+'_'+k))cls+=' thaw';
+  if(c.rev){cls+=' rev';delete c.rev}
+  let sty='';if(ANIM.intro){cls+=' in';sty=` style="animation-delay:${Math.min(900,ANIM.n++*28)}ms"`}
+  if(sel&&sel.s===s&&sel.k===k)cls+=' sel';if(hintMv&&hintMv.a===s&&hintMv.ia===k)cls+=' hs';
+  return `<div class="${cls}"${sty} data-s="${s}" data-k="${k}" data-mv="${mv?1:0}">${inner}${extra}</div>`}
+function render(){
+  const g=game,dark=g.mech.dark;
+  const H={grid:'',conv:'',elev:''};
+  g.sh.forEach((s,i)=>{let h='';const nx=s.layers[s.li+1],left=s.layers.length-1-s.li;
+    let bk='';if(nx)for(let k=0;k<s.cap;k++){const c=nx[k];bk+=c?(c.hid?`<i class="q">${W().sk.hidden[0]}</i>`:`<i>${EM(c.t)}</i>`):'<i></i>'}
+    let row='';for(let k=0;k<s.cap;k++){const c=s.front[k];row+=`<div class="slot" data-k="${k}">${c?itemHTML(c,i,k):''}</div>`}
+    const lk=!g.unlocked(i)?`<div class="lockov"><span>${W().sk.lock[0]}</span><b>${s.lock-g.m}</b></div>`:ANIM.unl.has(i)?`<div class="lockov gone"><span>${W().sk.lock[0]}</span></div>`:'';
+    h+=`<div class="shelf${dark?' dark':''}${s.cap<3?' small':''}${s.bonus?' bonus':''}${hintMv&&hintMv.b===i?' ht':''}" data-s="${i}" style="--cap:${s.cap}"><div class="bk">${bk}</div><div class="row">${row}</div><div class="plank"></div>${left>0?`<b class="ly">+${left}</b>`:''}${lk}</div>`;H[s.mv||'grid']+=h});
+  ANIM.intro=false;ANIM.n=0;$('grid').innerHTML=H.grid;$('conv').innerHTML=H.conv;$('elev').innerHTML=H.elev;moveBands(performance.now());ANIM.adv.clear();ANIM.drop=null;ANIM.thaw.clear();ANIM.unl.clear();
+}
+function chalText(c){if(!c)return '';return {combo:`Padaryk kombo ×${c.n}`,first:`Pirmą išvalyk ${EM(c.t)}`,noboost:'Nenaudok pagalbų'}[c.type]}
+function renderHUD(){const g=game;if(!g)return;const rem=g.timeLimit*1000-g.el;
+  $('time').textContent=fmt(rem);document.body.classList.toggle('hurry',g.started&&g.status==='play'&&rem<=10000&&g.freeze<=0);$('tbox').className=g.freeze>0?'frz':rem<=15000&&g.started?'warn':'';$('left').textContent=g.remaining();
+  const ok=g.chalOk(),c=g.chal;let lost=false,pr='';
+  if(c){if(c.type==='first'&&g.firstType!=null&&g.firstType!==c.t)lost=true;if(c.type==='noboost'&&g.used)lost=true;if(c.type==='combo')pr=g.maxCombo>=c.n?' ✓':` (${Math.min(g.maxCombo,c.n)}/${c.n})`;if(c.type==='first'&&g.firstType===c.t)pr=' ✓'}
+  const tOk=g.el<=g.parTime*1000,mOk=g.moves<=g.parMoves;
+  $('strip').innerHTML=`<div class="ch">${c?`<div class="${lost?'bad':(ok||pr===' ✓')?'ok':''}">🎯 ${chalText(c)}${pr}</div>`:''}<div class="par"><span class="${tOk?'':'bad'}">⏱ ${fmt(Math.max(0,g.parTime*1000-g.el))}</span> · <span class="${mOk?'':'bad'}">👣 ${g.moves}/${g.parMoves}</span></div></div><div class="pg"><div class="pbar"><i style="width:${g.cleared/g.N*100}%"></i></div></div><span class="coin">🪙 ${COINS}</span>`}
+/* --- tempimas ir paspaudimai --- */
+let drag=null;
+function shelfEl(i){return $('board').querySelector(`.shelf[data-s="${i}"]`)}
+function slotRect(i,k){const e=shelfEl(i);const s=e&&e.querySelector(`.slot[data-k="${k}"]`);return s?s.getBoundingClientRect():null}
+function nearestShelf(x,y){let bi=-1,bd=1e9;$('board').querySelectorAll('.shelf').forEach(e=>{const band=e.closest('#conv,#elev');if(band){const br=band.getBoundingClientRect();if(x<br.left||x>br.right||y<br.top||y>br.bottom)return}const r=e.getBoundingClientRect(),dx=Math.max(r.left-x,0,x-r.right),dy=Math.max(r.top-y,0,y-r.bottom),d=dx*dx+dy*dy;if(d<bd){bd=d;bi=+e.dataset.s}});return bd<=30*30?bi:-1}
+function slotAt(i,x){const e=shelfEl(i);if(!e)return null;let bk=null,bd=1e9;e.querySelectorAll('.slot').forEach(s=>{const r=s.getBoundingClientRect(),d=Math.abs((r.left+r.right)/2-x);if(!s.children.length&&d<bd){bd=d;bk=+s.dataset.k}});return bk}
+function nope(i,k){const e=k!=null?shelfEl(i)&&shelfEl(i).querySelector(`.it[data-k="${k}"]`):shelfEl(i);if(e){e.classList.remove('nope');void e.offsetWidth;e.classList.add('nope')}sfx('locked')}
+function explainBlocked(i,k){const g=game,s=g.sh[i],c=k!=null?s.front[k]:null,w=W();
+  if(!g.unlocked(i))toast(w.sk.lock[0]+' '+w.sk.lock[1],`Atsirakins išvalius dar ${s.lock-g.m} trejet${s.lock-g.m===1?'ą':'us'}`);
+  else if(c&&c.thr>g.m)toast(w.sk.frozen[0]+' '+w.sk.frozen[1],`Pajudinsi išvalius dar ${c.thr-g.m} trejet${c.thr-g.m===1?'ą':'us'}`)}
+$('board').addEventListener('pointerdown',e=>{
+  if(!game||game.status!=='play'||busy||drag)return;auInit();
+  const it=e.target.closest('.it'),she=e.target.closest('.shelf');
+  if(it){const s=+it.dataset.s,k=+it.dataset.k;
+    if(it.dataset.mv!=='1'){if(sel&&s!==sel.s)return tryMove(sel.s,sel.k,s,null);nope(s,k);explainBlocked(s,k);return}
+    drag={s,k,x0:e.clientX,y0:e.clientY,el:it,moved:false,id:e.pointerId};e.preventDefault();return}
+  if(she&&sel){const b=+she.dataset.s;if(b===sel.s){sel=null;render();return}const sl=e.target.closest('.slot');tryMove(sel.s,sel.k,b,sl&&!sl.children.length?+sl.dataset.k:null);return}
+  if(sel){sel=null;render()}
+});
+window.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x0,dy=e.clientY-drag.y0;
+  if(!drag.moved){if(dx*dx+dy*dy<64)return;drag.moved=true;sel=null;const r=drag.el.getBoundingClientRect(),f=document.createElement('div');f.className='fly';
+    f.style.width=r.width+'px';f.style.height=r.height+'px';f.style.fontSize=getComputedStyle(drag.el).fontSize;f.innerHTML=drag.el.innerHTML;drag.ox=r.left-drag.x0;drag.oy=r.top-drag.y0-14;
+    $('fx').appendChild(f);drag.f=f;drag.el.classList.add('lift');drag.el.classList.remove('sel');sfx('pick')}
+  drag.f.style.transform=`translate(${e.clientX+drag.ox}px,${e.clientY+drag.oy}px) scale(1.15)`});
+function endDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=null;
+  if(!d.moved){ // paspaudimas
+    if(sel&&sel.s===d.s&&sel.k===d.k){sel=null;render();return}
+    if(sel&&sel.s!==d.s){tryMove(sel.s,sel.k,d.s,null);return}
+    sel={s:d.s,k:d.k};sfx('pick');render();return}
+  const b=nearestShelf(e.clientX,e.clientY),fr=d.f.getBoundingClientRect();
+  if(b>=0&&b!==d.s&&game.canDrop(b)){d.f.remove();tryMove(d.s,d.k,b,slotAt(b,e.clientX),fr);return}
+  if(b>=0&&b!==d.s){nope(b);explainBlocked(b)}
+  const r=d.el.getBoundingClientRect();d.f.animate([{transform:d.f.style.transform},{transform:`translate(${r.left}px,${r.top}px)`}],{duration:160,easing:'ease-out'}).onfinish=()=>{d.f.remove();d.el.classList.remove('lift')}}
+window.addEventListener('pointerup',endDrag);window.addEventListener('pointercancel',endDrag);
+function tryMove(a,ia,b,ib,fromRect){
+  const g=game;sel=null;
+  if(!g.unlocked(b)){nope(b);explainBlocked(b);render();return}
+  if(!g.canDrop(b)){nope(b);render();return}
+  const src=shelfEl(a)&&shelfEl(a).querySelector(`.it[data-k="${ia}"]`);const r0=fromRect||(src&&src.getBoundingClientRect());const html=src?src.innerHTML:EM(g.sh[a].front[ia].t),fs=src?getComputedStyle(src).fontSize:'40px';
+  const ev=g.move(a,ia,b,ib,performance.now());if(!ev){render();return}
+  if(!g.started){g.started=true}
+  hintMv=null;busy=true;const r1=slotRect(b,ev.ib);
+  if(src)src.classList.add('lift');
+  const fin=()=>{busy=false;afterMove(ev)};
+  if(r0&&r1){const f=document.createElement('div');f.className='fly';f.style.width=r0.width+'px';f.style.height=r0.height+'px';f.style.fontSize=fs;f.innerHTML=html;$('fx').appendChild(f);
+    const tx=r1.left+(r1.width-r0.width)/2,ty=r1.bottom-r0.height;
+    f.animate([{transform:`translate(${r0.left}px,${r0.top}px) scale(${fromRect?1.15:1})`},{transform:`translate(${tx}px,${ty}px) scale(1)`}],{duration:fromRect?110:170,easing:'ease-out'}).onfinish=()=>{f.remove();fin()}}
+  else fin()}
+function afterMove(ev){
+  const g=game;ev.adv.forEach(i=>ANIM.adv.add(i));ev.thaw.forEach(([i,k])=>ANIM.thaw.add(i+'_'+k));ev.unlock.forEach(i=>ANIM.unl.add(i));
+  if(ev.b!=null&&!ev.matched.some(m=>m.s===ev.b))ANIM.drop=[ev.b,ev.ib];
+  const pops=ev.matched.map(m=>({m,rs:[0,1,2].map(k=>slotRect(m.s,k))}));
+  if(ev.took)pops.push({m:{t:ev.t},rs:ev.took.map(([i,k])=>slotRect(i,k))});
+  render();renderHUD();renderBar();
+  if(ev.b!=null&&!ev.matched.length)sfx('drop');
+  pops.forEach(p=>popFx(p.m.t,p.rs));
+  if(ev.matched.length||ev.took){sfx('match',g.combo);if(g.combo>=2&&!ev.took){const r=pops[0].rs[1];if(r)comboFx(g.combo,r);achSet('combo',g.combo);if(g.combo>=3){const b=$('board');b.classList.remove('shk');void b.offsetWidth;b.classList.add('shk')}}if(!tmOn()){achAdd('match',ev.matched.length||1)}}
+  if(ev.adv.length)setTimeout(()=>sfx('adv'),120);
+  if(ev.thaw.length)setTimeout(()=>sfx('thaw'),200);
+  if(ev.unlock.length)setTimeout(()=>sfx('unlock'),250);
+  checkEnd()}
+function popFx(t,rs){const fx=$('fx'),cols=['#fde047','#f472b6','#60a5fa','#4ade80','#fb923c'];
+  const ok=rs.filter(Boolean);if(ok.length){const cx=ok.reduce((a,r)=>a+r.left+r.width/2,0)/ok.length,cy=ok.reduce((a,r)=>a+r.top+r.height/2,0)/ok.length,R=ok[0].width;
+    const ring=document.createElement('div');ring.className='ring';ring.style.width=ring.style.height=R+'px';fx.appendChild(ring);
+    ring.animate([{transform:`translate(${cx-R/2}px,${cy-R/2}px) scale(.3)`,opacity:1},{transform:`translate(${cx-R/2}px,${cy-R/2}px) scale(2.6)`,opacity:0}],{duration:520,easing:'ease-out'}).onfinish=()=>ring.remove();
+    for(let j=0;j<8;j++){const st=document.createElement('div');st.className='str';st.textContent=j%2?'✦':'★';st.style.color=cols[j%5];fx.appendChild(st);const a=j/8*Math.PI*2+Math.random()*.4,d=R*.9+Math.random()*R*.6;
+      st.animate([{transform:`translate(${cx}px,${cy}px) scale(.4) rotate(0)`,opacity:1},{transform:`translate(${cx+Math.cos(a)*d}px,${cy+Math.sin(a)*d}px) scale(1.2) rotate(180deg)`,opacity:0}],{duration:650,delay:60,easing:'cubic-bezier(.2,.8,.3,1)'}).onfinish=()=>st.remove()}}
+  rs.forEach((r,i)=>{if(!r)return;const p=document.createElement('div');p.className='pop';p.style.width=r.width+'px';p.style.height=r.height+'px';p.style.fontSize=r.width*.72+'px';p.textContent=EM(t);fx.appendChild(p);
+    const cx=r.left,cy=r.top;p.animate([{transform:`translate(${cx}px,${cy}px) scale(1)`,opacity:1},{transform:`translate(${cx}px,${cy-10}px) scale(1.35)`,opacity:1,offset:.35},{transform:`translate(${cx}px,${cy-30}px) scale(.2)`,opacity:0}],{duration:420,delay:i*40,easing:'ease-in'}).onfinish=()=>p.remove();
+    for(let j=0;j<5;j++){const s=document.createElement('div');s.className='spk';s.style.background=cols[(i+j)%5];fx.appendChild(s);const a=Math.random()*Math.PI*2,d=26+Math.random()*30,x=r.left+r.width/2,y=r.top+r.height/2;
+      s.animate([{transform:`translate(${x}px,${y}px) scale(1)`,opacity:1},{transform:`translate(${x+Math.cos(a)*d}px,${y+Math.sin(a)*d}px) scale(.3)`,opacity:0}],{duration:520,delay:120+i*40,easing:'ease-out'}).onfinish=()=>s.remove()}})}
+function comboFx(n,r){const e=document.createElement('div');e.className='cmb';e.textContent=`Kombo ×${n}!`;$('fx').appendChild(e);const br=$('board').getBoundingClientRect(),x=Math.min(Math.max(r.left+r.width/2,br.left+70),br.right-70),y=Math.max(r.top,br.top+60);
+  e.animate([{transform:`translate(${x}px,${y}px) translate(-50%,-50%) scale(.6)`,opacity:0},{transform:`translate(${x}px,${y-20}px) translate(-50%,-50%) scale(1.15)`,opacity:1,offset:.25},{transform:`translate(${x}px,${y-50}px) translate(-50%,-50%) scale(1)`,opacity:0}],{duration:1100,easing:'ease-out'}).onfinish=()=>e.remove()}
+function checkEnd(){const g=game;if(g.status!=='play')return;
+  if(g.remaining()===0){g.status='win';whenQuiet(gen,winGame);return}
+  if(!g.hasMove()){g.status='lose';g.why='stuck';const g0=gen;setTimeout(()=>{if(g0===gen)loseCard()},500)}}
+function whenQuiet(g0,fn){const t=()=>{if(g0!==gen)return;if($('fx').children.length)return setTimeout(t,150);fn()};setTimeout(t,350)}
+/* --- gyvas fonas, prekių judesiai, konfeti --- */
+const BGCOL=[['#fbbf24','#f97316','#fde68a'],['#f97316','#dc2626','#7c2d12'],['#f472b6','#c084fc','#fecdd3'],['#60a5fa','#34d399','#fde047']];
+function setBg(w){const k=WORLDS.indexOf(w),col=BGCOL[k<0?0:k],r=rng(k*77+1);let h='';
+  col.forEach((c,i)=>{const sz=180+r()*160;h+=`<div class="blob" style="background:${c};width:${sz}px;height:${sz}px;left:${r()*80-10}%;top:${r()*80}%;animation-delay:${-i*5}s"></div>`});
+  for(let i=0;i<12;i++)h+=`<span class="fl" style="left:${r()*94}%;font-size:${22+r()*26}px;animation-duration:${16+r()*18}s;animation-delay:${-r()*30}s">${w.items[Math.floor(r()*w.items.length)]}</span>`;
+  $('bg').innerHTML=h}
+setInterval(()=>{const g=game;if(!g||g.status!=='play'||busy||drag||PZ.on||HOME.on||document.hidden||$('overlay').classList.contains('show'))return;
+  const its=[...document.querySelectorAll('#board .it[data-mv="1"]:not(.sel):not(.hs)')];if(!its.length)return;const e=its[Math.floor(Math.random()*its.length)];
+  e.classList.remove('wig');void e.offsetWidth;e.classList.add('wig');setTimeout(()=>e.classList.remove('wig'),800)},2200);
+function confetti(){const cv=$('conf'),x=cv.getContext('2d'),W_=cv.width=innerWidth,H_=cv.height=innerHeight,cols=['#f43f5e','#fbbf24','#22c55e','#3b82f6','#a855f7','#f97316'];
+  const P=Array.from({length:140},()=>({x:W_/2+(Math.random()-.5)*80,y:H_*.42,vx:(Math.random()-.5)*14,vy:-6-Math.random()*12,w:6+Math.random()*6,h:8+Math.random()*8,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[Math.floor(Math.random()*6)]}));
+  const t0=performance.now();(function f(t){x.clearRect(0,0,W_,H_);const el=t-t0;P.forEach(p=>{p.vy+=.35;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.globalAlpha=Math.max(0,1-el/3200);x.fillStyle=p.c;x.fillRect(-p.w/2,-p.h/2,p.w,Math.abs(Math.cos(p.r))*p.h+1);x.restore()});
+    if(el<3200)requestAnimationFrame(f);else x.clearRect(0,0,W_,H_)})(t0)}
+/* --- laikas --- */
+let lastT=performance.now(),tickS=-1;
+setInterval(()=>{const n=performance.now(),dt=Math.min(500,n-lastT);lastT=n;const g=game;
+  if(!g||g.status!=='play'||!g.started||PZ.on||HOME.on||document.hidden||$('overlay').classList.contains('show')||$('menu').classList.contains('show'))return;
+  if(g.freeze>0){g.freeze-=dt;if(g.freeze<=0){g.freeze=0;renderHUD()}}else g.el+=dt;
+  const rem=g.timeLimit*1000-g.el,s=Math.ceil(rem/1000);if(s<=10&&s>0&&s!==tickS){tickS=s;sfx('tick')}
+  if(rem<=0){g.el=g.timeLimit*1000;g.status='lose';g.why='time';renderHUD();sfx('lose');loseCard()}},100);
+setInterval(()=>{if(game&&game.status==='play')renderHUD()},250);
+/* ===================== MONETOS IR PAGALBOS ===================== */
+var COINS=store.get('prekes.coins',null);if(COINS==null){COINS=60;store.set('prekes.coins',COINS)}
+function tmOn(){try{return !!testMode}catch(e){return false}}
+function addCoins(n){if(n>0&&tmOn())return 0;COINS=Math.max(0,COINS+n);store.set('prekes.coins',COINS);return n}
+function levelReward(L,st,prev){const kd=kindOf(L),bon=kd==='big'?25:kd==='boss'?10:0;return prev>0?2+st+Math.max(0,st-prev)*5:10+st*3+bon}
+const BOOST=[
+  {id:'undo',ic:'↩️',name:'Atšaukti',cost:5,txt:'Grąžina paskutinį ėjimą.'},
+  {id:'hint',ic:'🎯',name:'Patarimas',cost:10,txt:'Parodo, kurią prekę kur perkelti.'},
+  {id:'shuffle',ic:'🔀',name:'Sumaišyti',cost:15,txt:'Sumaišo visas matomas prekes lentynose.'},
+  {id:'freeze',ic:'⏸️',name:'Sustabdyti laiką',cost:15,txt:'Laikas 20 s nebėga.'},
+  {id:'magnet',ic:'🧲',name:'Magnetas',cost:30,txt:'Ištraukia 3 vienodas prekes – tos rūšies, kurios matosi daugiausia.'},
+  {id:'shelf',ic:'➕',name:'Nauja lentyna',cost:35,txt:'Prideda tuščią lentyną (iki 2 per lygį).'}];
+function boostOk(id){const g=game;if(!g||g.status!=='play'||busy)return false;
+  if(id==='undo')return g.hist.length>0;if(id==='shelf')return g.sh.filter(s=>s.bonus).length<2;if(id==='freeze')return g.freeze<=0;return true}
+function renderBar(){$('bar').innerHTML=BOOST.map(b=>`<button data-b="${b.id}" ${boostOk(b.id)&&(testMode||COINS>=b.cost)?'':'disabled'}><b>${b.ic}</b><small>${testMode?'0':b.cost} 🪙</small><span>${b.name.split(' ')[0]}</span></button>`).join('');
+  $('bar').querySelectorAll('button').forEach(bt=>bt.onclick=()=>useBoost(bt.dataset.b))}
+function useBoost(id){const g=game,B=BOOST.find(x=>x.id===id);if(!boostOk(id))return;if(!testMode&&COINS<B.cost){toast('🪙 Neužtenka monetų',`Reikia ${B.cost} 🪙`);return}
+  sel=null;let ev=null;
+  if(id==='hint'){const h=g.hint();if(!h){toast('🤔 Patarimo nėra','Pabandyk sumaišyti arba atšaukti ėjimą');return}hintMv=h;render()}
+  else if(id==='undo'){g.restore(g.hist.pop());g.status='play';render()}
+  else if(id==='shuffle'){g.hist.push(g.snap());g.shuffleFront(rng(Date.now()&0xffff));const e2=g.resolve({matched:[],adv:[],thaw:[],unlock:[]},performance.now());busy=true;
+    document.querySelectorAll('#board .it').forEach(e=>e.classList.add('nope'));setTimeout(()=>{busy=false;if(e2.matched.length)afterMove(e2);else{render();renderBar();checkEnd()}},250)}
+  else if(id==='freeze'){g.freeze=20000;toast('⏸️ Laikas sustojo','20 s')}
+  else if(id==='magnet'){ev=g.magnet(performance.now());if(!ev){toast('🧲 Nėra ką traukti','');return}}
+  else if(id==='shelf'){g.addShelf();layoutBoard();render();toast('➕ Nauja lentyna','')}
+  if(!testMode)addCoins(-B.cost);g.used++;achAdd('boost',1);sfx(id==='magnet'?'magnet':'unlock');
+  if(ev&&id==='magnet')afterMove(ev);
+  renderHUD();renderBar()}
+function showBoost(){showCard(`<h2>🧰 Pagalbos</h2><p>Turi 🪙 ${COINS}${testMode?' · testo režime nemokamai':''}</p><p style="font-size:13px">Monetas gauni už kiekvieną įveiktą lygį – ir kartodamas.</p><div class="hl">${BOOST.map(b=>`<div><b>${b.ic}</b><p><strong>${b.name} – ${b.cost} 🪙</strong>${b.txt}</p><button class="bb" data-b="${b.id}" ${boostOk(b.id)&&(testMode||COINS>=b.cost)?'':'disabled'}>Naudoti</button></div>`).join('')}</div><button id="bx">Uždaryti</button>`);
+  $('bx').onclick=closeCard;document.querySelectorAll('.bb').forEach(bt=>bt.onclick=()=>{closeCard();useBoost(bt.dataset.b)})}
+/* ===================== UŽUOMINOS ===================== */
+function hintItems(){const g=game,w=W(),o=[],on=new Set(g.mech.on);
+  if(level<=3)o.push(['basic','👆','Kaip žaisti','Tempk prekę į kitą lentyną arba paspausk prekę, o tada – lentyną. Kai vienoje lentynoje atsiduria 3 vienodos prekės, jos dingsta. Išvalyk visas prekes, kol nesibaigė laikas. Laikas pradeda bėgti po pirmo ėjimo.']);
+  if(g.sh.some(s=>s.layers.length>1))o.push(['layers','📚','Sluoksniai','Už priekinių prekių blankiai matosi kitas sluoksnis. Kai lentynos priekis ištuštėja, jis atslenka į priekį. Skaičius +N kampe – kiek sluoksnių dar liko.']);
+  if(g.sh.some(s=>s.lock))o.push(['lock',w.sk.lock[0],w.sk.lock[1],'Atsirakins tik tada, kai išvalysi tiek trejetų, kiek rodo geltonas skaičius ('+g.sh.filter(s=>s.lock).map(s=>s.lock).join(' ir ')+'). Kol užrakinta – iš jos imti ir į ją dėti negalima.']);
+  if(g.sh.some(s=>s.mv==='conv'))o.push(['conv',w.sk.conv[0],w.sk.conv[1],'Apačioje lentynos važiuoja juosta ir dalį laiko būna už ekrano. Pagauk reikiamą lentyną, kol ji matosi – tempk prekę tiesiai ant jos.']);
+  if(g.sh.some(s=>s.mv==='elev'))o.push(['elev',w.sk.elev[0],w.sk.elev[1],'Dešinėje lentynos nuolat kyla aukštyn ir dingsta viršuje, o apačioje pasirodo vėl. Planuok, kada kuri bus pasiekiama.']);
+  if(g.mech.frozen)o.push(['frozen_'+w.name,w.sk.frozen[0],w.sk.frozen[1],'Prekės su ženkleliu ir skaičiumi pajudinti negalima, kol neišvalysi tiek trejetų. Bet ją galima išvalyti vietoje – atnešk prie jos dar 2 tokias pačias.']);
+  if(g.mech.hidden)o.push(['hidden',w.sk.hidden[0],w.sk.hidden[1],'Ką slepia „?“, sužinosi tik išvalęs kitą trejetą. Kol nežinai – ją vis tiek galima perkelti.']);
+  if(g.mech.dark)o.push(['dark',w.sk.dark[0],w.sk.dark[1],'Kitame sluoksnyje matyti tik prekių siluetai – teks įsiminti ar spėti.']);
+  if(g.sh.some(s=>s.cap===2))o.push(['small',w.sk.small[0],w.sk.small[1],'Čia telpa tik 2 prekės – trejeto nesudėsi, bet tinka laikinai padėti prekę.']);
+  if(g.boss&&level>=10)o.push(['bosshard','🔥','Bosas: galvok į priekį','Daugiau prekių ir mažiau laiko. Stenkis visada palikti bent vieną laisvą vietą. Suklydus padės ↩️ ir kitos pagalbos už 🪙.']);
+  if(g.chal)o.push(['chal','🎯','Iššūkis: '+chalText(g.chal),'Įvykdęs gausi ★. Iš viso 4 ★: už įveiktą lygį, už laiką, už ėjimų skaičių ir už šią užduotį.'+(g.chal.type==='combo'?' Kombo – trejetai iš eilės, kai tarp jų praeina ne daugiau 6 s.':'')]);
+  return o}
+function showHints(){const it=hintItems();showCard(`<h2>💡 Šiame lygyje</h2><div class="hl">${it.map(h=>`<div><b>${h[1]}</b><p><strong>${h[2]}</strong>${h[3]}</p></div>`).join('')}</div><button class="primary" id="hok">Supratau</button>`);
+  $('hok').onclick=closeCard;$('hint').classList.remove('new');const seen=store.get('prekes.seenHints',{});it.forEach(h=>seen[h[0]]=1);store.set('prekes.seenHints',seen)}
+$('hint').onclick=()=>showHints();
+/* ===================== LAIMĖJIMAS IR PRALAIMĖJIMAS ===================== */
+function winGame(){const g=game,g0=gen;
+  if(DAILY.on)return dailyWin(g0);
+  const TM=tmOn();if(!TM){unlocked=Math.max(unlocked,level+1);store.set('prekes.unlocked',unlocked)}
+  const st=g.stars(),cOk=g.chalOk(),prevSt=best[level]||0,coin=addCoins(levelReward(level,st,prevSt));if(!TM){best[level]=Math.max(prevSt,st);store.set('prekes.stars',best)}
+  if(!g.used)achAdd('nohelp',1);if(g.el<=g.parTime*500)achSet('fast',1);achCheck();
+  sfx('win');confetti();for(let i=0;i<st;i++)setTimeout(()=>sfx('star',i),450+i*220);
+  showCard(`<h2>Lygis įveiktas!</h2><div class="stars">${'★'.repeat(st)}<span>${'★'.repeat(4-st)}</span></div><div class="sbrk"><span class="on">★ Lygis įveiktas</span><span class="${g.el<=g.parTime*1000?'on':''}">★ Laikas ${fmt(g.el)} (≤ ${fmt(g.parTime*1000)})</span><span class="${g.moves<=g.parMoves?'on':''}">★ Ėjimai ${g.moves} (≤ ${g.parMoves})</span><span class="${cOk?'on':''}">★ ${g.chal?chalText(g.chal):'Užduotis (šiame lygyje nėra)'}</span></div>${level>=MAXL?'<p>🏆 Įveikei visus '+MAXL+' lygių!</p>':qOf(level)===STAGE?'<p>🎉 Etapas įveiktas! Sunkumas prasideda iš naujo, prekės – kitos</p>':''}${TM?'<p class="coin">🧪 Testo režimas – žvaigždutės, 🪙 ir pasiekimai neįskaitomi</p>':`<p class="coin">🪙 +${coin}${prevSt?' (kartojant)':''} · iš viso ${COINS}</p>`}<button class="primary" id="nx">${playable(level+1)?'Kitas lygis':'Į meniu'}</button><button id="rp">↻ Žaisti šį lygį iš naujo</button><button id="mn">Lygių meniu</button>`);
+  $('nx').onclick=()=>playable(level+1)?newGame(level+1):openMenu();$('rp').onclick=()=>newGame(level);$('mn').onclick=()=>openMenu()}
+function loseCard(){const g=game,time=g.why==='time';sfx('lose');
+  const opt=time?{id:'t',txt:'⏱ +45 s',cost:25}:{id:'s',txt:'➕ Nauja lentyna',cost:30};const can=testMode||COINS>=opt.cost;
+  showCard(`<h2>${time?'⏱ Laikas baigėsi!':'🧱 Nebėra ėjimų!'}</h2><p>${time?'Liko neišrikiuotų prekių: '+g.remaining():'Visos laisvos vietos užimtos, o trejeto nesudėsi.'}</p><p class="coin">Turi 🪙 ${COINS}</p>
+    <button class="cont" id="lc" ${can?'':'disabled'}>${opt.txt} · ${testMode?'nemokamai':opt.cost+' 🪙'}</button>${!time&&g.hist.length?`<button id="lu" ${testMode||COINS>=5?'':'disabled'}>↩️ Atšaukti ėjimą · ${testMode?'nemokamai':'5 🪙'}</button>`:''}
+    <button class="primary" id="lr">↻ Bandyti iš naujo</button><button id="lm">Lygių meniu</button>`);
+  $('lc').onclick=()=>{if(!testMode)addCoins(-opt.cost);g.used++;g.status='play';closeCard();if(time)g.extraT+=45;else{g.addShelf();layoutBoard();render()}renderHUD();renderBar();toast(time?'⏱ +45 s':'➕ Nauja lentyna','Tęsiam!')};
+  if($('lu'))$('lu').onclick=()=>{if(!testMode)addCoins(-5);g.used++;g.restore(g.hist.pop());g.status='play';closeCard();render();renderHUD();renderBar()};
+  $('lr').onclick=()=>newGame(level,false,DAILY.on?'daily':undefined);$('lm').onclick=()=>{DAILY.on=false;openMenu()}}
+/* ===================== GARSAS (Web Audio – viskas sintezuojama, failų nereikia) ===================== */
+const AU={c:null,on:{s:store.get('prekes.sfx',1),m:store.get('prekes.mus',1)},song:null,next:0,step:0,timer:null};
+function auInit(){
+  if(AU.c){if(AU.c.state==='suspended')AU.c.resume();return}
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  const c=AU.c=new AC();
+  AU.out=c.createDynamicsCompressor();AU.out.connect(c.destination);
+  AU.sfx=c.createGain();AU.sfx.connect(AU.out);AU.mus=c.createGain();AU.mus.connect(AU.out);
+  const len=c.sampleRate*2.2,ir=c.createBuffer(2,len,c.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}
+  AU.rev=c.createConvolver();AU.rev.buffer=ir;const rg=c.createGain();rg.gain.value=.3;AU.rev.connect(rg);rg.connect(AU.out);
+  const nb=c.createBuffer(1,c.sampleRate,c.sampleRate),nd=nb.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;AU.noise=nb;
+  auApply();if(curWorld)musicFor(curWorld);
+}
+function auApply(){if(!AU.c){store.set('prekes.sfx',AU.on.s);store.set('prekes.mus',AU.on.m);return}const t=AU.c.currentTime;AU.sfx.gain.setTargetAtTime(AU.on.s?1.4:0,t,.05);AU.mus.gain.setTargetAtTime(AU.on.m?.8:0,t,.2);
+  store.set('prekes.sfx',AU.on.s);store.set('prekes.mus',AU.on.m)}
+document.addEventListener('pointerdown',auInit,true);
+document.addEventListener('visibilitychange',()=>{if(AU.c)document.hidden?AU.c.suspend():AU.c.resume()});
+function tone(o){
+  const c=AU.c,t=o.t??c.currentTime,os=c.createOscillator(),g=c.createGain(),a=o.a??.005,v=o.v??.3;
+  os.type=o.type||'sine';os.frequency.setValueAtTime(o.f,t);if(o.f2)os.frequency.exponentialRampToValueAtTime(o.f2,t+o.d);if(o.det)os.detune.value=o.det;
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+o.d);
+  let n=os;if(o.lp){const f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=o.lp;f.Q.value=o.q||.7;os.connect(f);n=f}
+  n.connect(g);g.connect(o.dest||AU.sfx);if(o.rev){const s=c.createGain();s.gain.value=o.rev;g.connect(s);s.connect(AU.rev)}
+  if(o.vib){const l=c.createOscillator(),lg=c.createGain();l.frequency.value=5.2;lg.gain.value=o.vib;l.connect(lg);lg.connect(os.frequency);l.start(t);l.stop(t+o.d+.05)}
+  os.start(t);os.stop(t+o.d+.05);
+}
+function noise(o){
+  const c=AU.c,t=o.t??c.currentTime,s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),v=o.v??.2;
+  s.buffer=AU.noise;s.loop=true;f.type=o.type||'bandpass';f.frequency.setValueAtTime(o.f||1000,t);if(o.f2)f.frequency.exponentialRampToValueAtTime(o.f2,t+o.d);f.Q.value=o.q||1;
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+(o.a||.005));g.gain.exponentialRampToValueAtTime(.0001,t+o.d);
+  s.connect(f);f.connect(g);g.connect(o.dest||AU.sfx);if(o.rev){const r=c.createGain();r.gain.value=o.rev;g.connect(r);r.connect(AU.rev)}
+  s.start(t,Math.random()*.5);s.stop(t+o.d+.05);
+}
+const SFX={
+  pick(){tone({f:620,f2:900,d:.06,v:.07,type:'triangle'})},
+  drop(){tone({f:300,f2:180,d:.09,v:.14,type:'sine'});noise({d:.05,v:.05,type:'lowpass',f:900})},
+  match(n=1){const t=AU.c.currentTime,k=Math.pow(1.122,Math.min(n-1,8));[659,830,988].forEach((f,i)=>tone({t:t+i*.05,f:f*k,d:.28,type:'triangle',v:.14,rev:.4}));noise({t,d:.25,v:.06,type:'highpass',f:6000});if(AU.c&&curWorld&&curWorld.name==='Grilis')noise({t,d:.5,v:.07,type:'highpass',f:3500,a:.03})},
+  adv(){noise({d:.18,v:.04,type:'bandpass',f:1400,f2:700,q:.8,a:.03})},
+  thaw(){tone({f:1200,f2:1800,d:.2,v:.06,type:'sine',rev:.5})},
+  win(){const t=AU.c.currentTime;[523,659,784,1046].forEach((f,i)=>tone({t:t+i*.11,f,d:.45,type:'triangle',v:.2,rev:.5}));tone({t:t+.48,f:1568,d:.9,v:.1,rev:.6})},
+  star(i){tone({f:880*Math.pow(1.26,i),d:.6,v:.18,rev:.6});tone({f:880*Math.pow(1.26,i)*2.76,d:.25,v:.03})},
+  lose(){const t=AU.c.currentTime;[392,330,262].forEach((f,i)=>tone({t:t+i*.2,f,d:.4,type:'triangle',v:.18}));tone({t:t+.6,f:196,f2:140,d:.8,type:'sawtooth',v:.07,lp:600})},
+  locked(){tone({f:300,f2:200,d:.12,type:'square',v:.08,lp:1200});noise({d:.06,v:.08,f:4000,q:2})},
+  unlock(){const t=AU.c.currentTime;[784,1046,1318].forEach((f,i)=>tone({t:t+i*.05,f,d:.25,type:'triangle',v:.1,rev:.4}));noise({t,d:.25,v:.06,type:'highpass',f:5000})},
+  magnet(){tone({f:200,f2:900,d:.4,type:'sawtooth',v:.06,lp:1500})},
+  tick(){tone({f:1500,d:.05,type:'square',v:.06,lp:3000})},
+  click(){tone({f:1300,d:.03,v:.05,type:'square',lp:3000})},
+  boss(){const t=AU.c.currentTime;[0,.16,.32].forEach((d,i)=>tone({t:t+d,f:[196,196,262][i],d:i<2?.12:.5,type:'sawtooth',v:.1,lp:1200,rev:.3}))},
+};
+function sfx(n,...a){if(AU.c&&AU.on.s)try{SFX[n](...a)}catch(e){}}
+/* --- foninė muzika: kiekvienam pasauliui savas stilius, melodija generuojama --- */
+const NOTE=n=>440*Math.pow(2,(n-69)/12);
+const SONGS={
+  'Parduotuvė':{bpm:104,root:60,scale:[0,2,4,5,7,9,11],chords:[[0,4,7,11],[-3,0,4,7],[-7,-3,0,4],[-5,-1,2,5]],lead:'bell',drums:'pop'},
+  'Grilis':{bpm:96,root:57,scale:[0,3,5,7,10],chords:[[0,3,7],[5,8,12],[-2,2,5],[0,3,7]],lead:'pluck',drums:'darbuka'},
+  'Kepykla':{bpm:84,root:65,scale:[0,2,4,7,9],chords:[[0,4,7],[-3,0,4],[-7,-3,0],[-5,-1,2]],lead:'flute',drums:'shaker'},
+  'Žaislai':{bpm:116,root:62,scale:[0,2,4,5,7,9,11],chords:[[0,4,7],[5,9,12],[7,11,14],[0,4,7]],lead:'square',drums:'pop'},
+};
+function sDeg(S,d){const L=S.scale.length,o=Math.floor(d/L);return S.root+12+o*12+S.scale[((d%L)+L)%L]}
+function sSnap(S,n){const rel=n-S.root-12,o=Math.floor(rel/12),pc=rel-o*12;let i=0;S.scale.forEach((s,k)=>{if(s<=pc)i=k});return o*S.scale.length+i}
+function mkPhrase(S,r){const out=[];let last=S.root+12+S.chords[0][1];
+  for(let bar=0;bar<4;bar++){const ch=S.chords[bar];for(let k=0;k<8;k++){
+    if(r()<(k%2?.5:.22)){out.push(null);continue}
+    let n=r()<.5?S.root+12+ch[Math.floor(r()*ch.length)]:sDeg(S,sSnap(S,last)+(r()<.5?1:-1)*(1+Math.floor(r()*2)));
+    while(n<S.root+5)n+=12;while(n>S.root+26)n-=12;out.push(n);last=n}}
+  return out}
+function musicFor(w){
+  if(!AU.c)return;const S=SONGS[w.name];if(AU.song===S)return;
+  const c=AU.c,old=AU.mbus;if(old){old.gain.setTargetAtTime(.0001,c.currentTime,.5);setTimeout(()=>old.disconnect(),3000)}
+  const g=c.createGain();g.gain.value=.0001;g.gain.setTargetAtTime(1,c.currentTime+.3,.8);g.connect(AU.mus);AU.mbus=g;
+  AU.song=S;AU.step=0;AU.next=c.currentTime+.15;const r=rng(S.bpm*131+7);AU.phr=[mkPhrase(S,r),mkPhrase(S,r)];
+  if(!AU.timer)AU.timer=setInterval(sched,30);
+}
+function lead(S,t,f,dt,dest){
+  if(S.lead==='square')tone({t,f,d:dt*.9,type:'square',v:.04,lp:1700,dest,rev:.25});
+  else if(S.lead==='flute')tone({t,f,d:dt*1.7,type:'sine',v:.09,a:.04,vib:4,dest,rev:.5});
+  else if(S.lead==='pluck'){tone({t,f,d:dt*.9,type:'triangle',v:.09,dest,rev:.3});tone({t,f:f*2,d:dt*.4,type:'sine',v:.03,dest})}
+  else{tone({t,f,d:1.1,type:'sine',v:.07,dest,rev:.6});tone({t,f:f*2.76,d:.3,type:'sine',v:.02,dest})}
+}
+function drum(S,t,k,st,dest){
+  if(S.drums==='pop'){if(k===0||k===4)tone({t,f:120,f2:42,d:.22,v:.26,dest});if(k===2||k===6)noise({t,d:.12,v:.05,f:1800,dest});if(k%2)noise({t,d:.04,v:.022,type:'highpass',f:7000,dest})}
+  else if(S.drums==='shaker'){if(k%2)noise({t,d:.07,v:.018,type:'highpass',f:5000,dest})}
+  else if(S.drums==='darbuka'){if(k===0)tone({t,f:95,f2:58,d:.28,v:.22,dest});if(k===3||k===5||k===6)noise({t,d:.06,v:.05,f:3000,q:3,dest});if(k===4)tone({t,f:180,f2:120,d:.12,v:.1,dest})}
+}
+function sched(){
+  const c=AU.c;if(!c||!AU.song||c.state!=='running')return;const S=AU.song,dt=60/S.bpm/2,dest=AU.mbus;
+  if(AU.next<c.currentTime-1)AU.next=c.currentTime+.05;
+  while(AU.next<c.currentTime+.25){
+    const t=AU.next,st=AU.step,bar=Math.floor(st/8)%4,k=st%8,ch=S.chords[bar];
+    if(k===0)ch.forEach(n=>tone({t,f:NOTE(S.root+n),d:dt*8.3,type:'sawtooth',v:.024,lp:850,a:.5,dest,rev:.4,det:Math.random()*12-6}));
+    if(k===0||k===4||(k===7&&S.drums==='pop'))tone({t,f:NOTE(S.root-12+ch[0]),d:dt*1.8,type:'triangle',v:.14,lp:450,dest});
+    const n=AU.phr[[0,0,1,0][Math.floor(st/32)%4]][st%32];if(n)lead(S,t,NOTE(n),dt,dest);
+    drum(S,t,k,st,dest);AU.next+=dt;AU.step++;
+  }
+}
+/* ===================== PAUZĖ ===================== */
+var PZ={on:false};
+function openPause(){if(!game)return;PZ.on=true;$('menu').classList.remove('show');const g=game;
+  showCard(`<h2>⏸️ Pauzė</h2><p>Lygis ${level} · liko ${fmt(g.timeLimit*1000-g.el)} · ${g.moves} ėj. · 🪙 ${COINS}</p><div class="pm">
+    <button class="primary" id="pr">▶ Tęsti</button>
+    <button id="pa">↻ Pradėti iš naujo</button>
+    <button id="pl">🗺️ Lygiai</button>
+    <div class="pm2"><button id="ph">💡 Užuominos</button><button id="pb">🧰 Pagalbos</button></div>
+    <button id="psn">${AU.on.s||AU.on.m?'🔊 Garsas: įjungtas':'🔇 Garsas: išjungtas'}</button>
+    <div class="pm2"><button id="ps">⚙️ Nustatymai</button><button id="pac">🏆 Pasiekimai</button></div>
+    <button id="pq" class="danger">🏠 Baigti žaidimą</button></div>`);
+  $('pac').onclick=()=>openAch(openPause);
+  $('pq').onclick=()=>{const go=()=>{PZ.on=false;closeCard();DAILY.on=false;newGame(store.get('prekes.level',level));showHome()};
+    if(g.moves>0&&g.status==='play'){showCard(`<h2>🏠 Baigti žaidimą?</h2><p>Šio lygio bandymas bus nutrauktas.</p><button class="primary danger" id="qy">Baigti</button><button id="qn">← Atgal</button>`);$('qy').onclick=go;$('qn').onclick=openPause}else go()};
+  $('pr').onclick=()=>{closeCard();PZ.on=false};
+  $('pa').onclick=()=>{if(g.moves>0&&g.status==='play'){showCard(`<h2>↻ Pradėti iš naujo?</h2><p>Šio bandymo progresas bus prarastas.</p><button class="primary" id="ry">Pradėti iš naujo</button><button id="rn">← Atgal</button>`);$('ry').onclick=()=>newGame(level,false,DAILY.on?'daily':undefined);$('rn').onclick=openPause}else newGame(level,false,DAILY.on?'daily':undefined)};
+  $('pl').onclick=()=>{closeCard();openMenu()};
+  $('ph').onclick=()=>showHints();$('pb').onclick=()=>showBoost();$('ps').onclick=openSettings;
+  $('psn').onclick=()=>{const on=AU.on.s||AU.on.m;AU.on.s=AU.on.m=on?0:1;auApply();$('psn').textContent=AU.on.s||AU.on.m?'🔊 Garsas: įjungtas':'🔇 Garsas: išjungtas'}}
+$('pause').onclick=openPause;
+setInterval(()=>{if(PZ.on&&!$('overlay').classList.contains('show')&&!$('menu').classList.contains('show'))PZ.on=false},200);
+function openSettings(){showCard(`<h2>⚙️ Nustatymai</h2><div class="pm"><button id="tm">🎵 ${AU.on.m?'Muzika: įjungta':'Muzika: išjungta'}</button><button id="ts">🔔 ${AU.on.s?'Garsai: įjungti':'Garsai: išjungti'}</button><button id="tt">🧪 Testo režimas: ${testMode?'įjungtas':'išjungtas'}</button><button id="cu">🔄 Tikrinti atnaujinimus</button><button id="rs" class="danger">🗑️ Anuliuoti progresą</button><button id="sb">← Atgal</button></div><p id="cus" style="font-size:14px;min-height:0"></p><div class="ver">Versija ${VERSION}${UPD.latest&&verCmp(UPD.latest,VERSION)>0?' · yra nauja: '+UPD.latest:''}</div>`);
+  $('cu').onclick=()=>checkUpdate(true);$('sb').onclick=()=>HOME.on?closeCard():openPause();
+  $('tm').onclick=()=>{AU.on.m=AU.on.m?0:1;auApply();openSettings()};
+  $('ts').onclick=()=>{AU.on.s=AU.on.s?0:1;auApply();sfx('click');openSettings()};
+  $('rs').onclick=()=>{showCard(`<h2>🗑️ Anuliuoti progresą?</h2><p>Bus ištrinta viskas: atrakinti lygiai, žvaigždutės, monetos, pasiekimai ir nustatymai. Šio veiksmo atšaukti negalima.</p><button class="primary danger" id="ry">Taip, ištrinti viską</button><button id="rn">Ne, palikti</button>`);
+    $('rn').onclick=closeCard;
+    $('ry').onclick=()=>{try{Object.keys(localStorage).filter(k=>k.startsWith('prekes.')).forEach(k=>localStorage.removeItem(k))}catch(e){}
+      unlocked=1;level=1;best={};testMode=0;COINS=60;store.set('prekes.coins',COINS);AU.on.s=1;AU.on.m=1;auApply();curWorld=null;newGame(1,true);toast('🗑️ Progresas ištrintas','Pradedame nuo 1 lygio')}};
+  const setTest=v=>{testMode=v;store.set('prekes.test',v);openSettings();renderBar()};
+  $('tt').onclick=()=>{if(testMode)return setTest(0);
+    showCard(`<h2>🧪 Testo režimas</h2><p>Įvesk slaptažodį</p><input id="tpw" type="password" autocomplete="off" style="width:100%;padding:12px;border-radius:10px;border:0;font:600 16px system-ui;margin:8px 0 4px"><p id="tpe" style="color:#fca5a5;min-height:18px"></p><button class="primary" id="tok">Įjungti</button><button id="tno">Atšaukti</button>`);
+    const ok=()=>{if($('tpw').value.trim().toLowerCase()==='prekes'){closeCard();setTest(1);toast('🧪 Testo režimas įjungtas','Visi lygiai atrakinti')}else{$('tpe').textContent='Neteisingas slaptažodis';$('tpw').select()}};
+    $('tok').onclick=ok;$('tpw').onkeydown=e=>{if(e.key==='Enter')ok()};$('tno').onclick=closeCard;setTimeout(()=>$('tpw').focus(),50)}}
+$('lvlBtn').onclick=()=>{PZ.on=true;openMenu()};
+/* ===================== LYGIŲ MENIU ===================== */
+let testMode=store.get('prekes.test',0);
+function playable(L){if(L<1||L>MAXL)return false;if(testMode)return true;return L<=unlocked}
+function openMenu(){renderMenu();$('menu').classList.add('show');closeCard();
+  const c=$('menu').querySelector('.lv.cur');if(c)c.scrollIntoView({block:'center'})}
+function renderMenu(){
+  const maxC=Math.min(cyc(MAXL),Math.max(cyc(unlocked),cyc(level))+1);let body='',tot=0;
+  for(let c=maxC;c>=0;c--){let cells='',cs=0;const w=WORLDS[c%4];
+    for(let q=1;q<=STAGE;q++){const L=c*STAGE+q,st=best[L]||0,pl=playable(L),kd=kindOf(L);cs+=st;
+      const sub=pl?(st?'★'.repeat(st)+'<span>'+'★'.repeat(4-st)+'</span>':KICON[kd]||'·'):'🔒';
+      cells+=`<button class="lv k-${kd}${pl?'':' lock'}${L===level?' cur':''}" data-l="${L}"><b>${L}</b><i>${sub}</i></button>`}
+    tot+=cs;body+=`<div class="chap"><span>${w.emoji} Etapas ${c+1}${c>=4?' · mišrios prekės':''}</span><span>★ ${cs}/${STAGE*4}</span></div><div class="grid">${cells}</div>`}
+  let all=0;for(const k in best)all+=best[k]||0;
+  $('menu').innerHTML=`<div class="mtop"><b>🗺️ Lygiai</b><span>★ ${all} · 🪙 ${COINS}</span><button id="mx">✕</button></div><div class="mbody">${body}</div><div class="ver">Versija ${VERSION}</div>`;
+  $('mx').onclick=()=>$('menu').classList.remove('show');
+  $('menu').querySelectorAll('.lv').forEach(b=>b.onclick=()=>{const L=+b.dataset.l;if(playable(L)){sfx('click');
+      if(game&&game.status==='play'&&game.moves>0){showCard(L===level?`<h2>Pradėti iš naujo?</h2><p>Ar tikrai nori nutraukti ir pradėti ${L} lygį iš naujo?</p><button class="primary" id="cy">Taip, iš naujo</button><button id="cn">Ne, tęsti</button>`:`<h2>Pakeisti lygį?</h2><p>Dabartinio ${level} lygio progresas bus prarastas.</p><button class="primary" id="cy">Žaisti ${L} lygį</button><button id="cn">Ne, tęsti</button>`);
+        $('cy').onclick=()=>{DAILY.on=false;newGame(L)};$('cn').onclick=closeCard}else{DAILY.on=false;newGame(L)}}else{b.classList.remove('nope');void b.offsetWidth;b.classList.add('nope');sfx('locked');
+        toast('🔒 Lygis dar užrakintas','Pirmiausia įveik ankstesnius lygius')}});
+}
+/* ===================== DIENOS IŠŠŪKIS ===================== */
+var DAILY={on:false,L:0};
+const dayNo=()=>{const d=new Date();return Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()))/864e5)};
+function dailyLevel(day=dayNo()){const h=Math.abs(Math.imul(day^0x5bd1e995,0x27d4eb2d)>>>0);return (1+h%4)*STAGE+6+(h>>>4)%13}
+function dailyState(){return store.get('prekes.daily',{})}
+function dailyDone(){return dailyState().d===dayNo()}
+function startDaily(){hideHome();DAILY.on=true;DAILY.L=dailyLevel();newGame(DAILY.L,false,'daily');toast('📅 Dienos iššūkis',dailyDone()?'Šiandien jau įveikta – žaidi dėl smagumo':'Įveik ir gauk 🪙')}
+function dailyWin(g0){const g=game,st=g.stars(),s=dailyState(),day=dayNo(),first=s.d!==day;let coin=0,streak=s.streak||0;
+  if(first&&tmOn()){}else if(first){streak=s.d===day-1?streak+1:1;coin=addCoins(25+st*5+Math.min(50,(streak-1)*5));store.set('prekes.daily',{d:day,st,streak,best:Math.max(streak,s.best||0)});achAdd('daily',1);achSet('streak',streak)}
+  else if(!tmOn()&&st>(s.st||0)){s.st=st;store.set('prekes.daily',s)}
+  sfx('win');confetti();showCard(`<h2>📅 Dienos iššūkis įveiktas!</h2><div class="stars">${'★'.repeat(st)}<span>${'★'.repeat(4-st)}</span></div>
+    <p>${fmt(g.el)} · ${g.moves} ėj.</p>${tmOn()?'<p class="coin">🧪 Testo režimas – apdovanojimų nėra</p>':first?`<p class="coin">🪙 +${coin} · serija ${streak} d.${streak>1?' 🔥':''}</p>`:'<p>Šiandien apdovanojimas jau gautas</p>'}<p>Kitas iššūkis – rytoj</p>
+    <button class="primary" id="dh">🏠 Pagrindinis meniu</button><button id="dl">▶ Žaisti lygius</button>`);
+  $('dh').onclick=()=>{DAILY.on=false;closeCard();newGame(store.get('prekes.level',1));showHome()};$('dl').onclick=()=>{DAILY.on=false;newGame(store.get('prekes.level',1))}}
+/* ===================== PASIEKIMAI ===================== */
+const ACH=[
+ {id:'first',ic:'🛒',n:'Pirmasis pirkinys',d:'Įveik pirmą lygį',k:'lv',t:1,r:10},
+ {id:'lv10',ic:'🧾',n:'Kasininkas',d:'Įveik 10 skirtingų lygių',k:'lv',t:10,r:20},
+ {id:'lv50',ic:'🏷️',n:'Parduotuvės vedėjas',d:'Įveik 50 skirtingų lygių',k:'lv',t:50,r:50},
+ {id:'lv100',ic:'🏬',n:'Prekybos tinklo savininkas',d:'Įveik 100 skirtingų lygių',k:'lv',t:100,r:100},
+ {id:'s4',ic:'⭐',n:'Tobula!',d:'Surink 4 ★ viename lygyje',k:'s4',t:1,r:15},
+ {id:'s4x20',ic:'🌟',n:'Perfekcionistas',d:'Surink 4 ★ 20-yje lygių',k:'s4',t:20,r:60},
+ {id:'st100',ic:'✨',n:'Žvaigždžių rinkėjas',d:'Surink iš viso 100 ★',k:'stars',t:100,r:40},
+ {id:'m100',ic:'📦',n:'Rūšiuotojas',d:'Išvalyk 100 trejetų',k:'match',t:100,r:20},
+ {id:'m1000',ic:'🏭',n:'Sandėlio karalius',d:'Išvalyk 1000 trejetų',k:'match',t:1000,r:80},
+ {id:'combo3',ic:'🔗',n:'Kombo!',d:'Padaryk kombo ×3',k:'combo',t:3,r:10},
+ {id:'combo6',ic:'⛓️',n:'Kombo meistras',d:'Padaryk kombo ×6',k:'combo',t:6,r:40},
+ {id:'fast',ic:'⚡',n:'Žaibas',d:'Įveik lygį per pusę laiko normos',k:'fast',t:1,r:20},
+ {id:'nohelp10',ic:'💪',n:'Be pagalbos',d:'Įveik 10 lygių nenaudodamas pagalbų',k:'nohelp',t:10,r:30},
+ {id:'boss1',ic:'🔥',n:'Bosų medžiotojas',d:'Įveik bosą',k:'boss',t:1,r:20},
+ {id:'boss10',ic:'👑',n:'Bosų griovėjas',d:'Įveik 10 skirtingų bosų',k:'boss',t:10,r:60},
+ {id:'world',ic:'🏁',n:'Etapas įveiktas',d:'Įveik etapo bosą (20 lygį)',k:'world',t:1,r:50},
+ {id:'world5',ic:'🌍',n:'Ilgų distancijų pirkėjas',d:'Įveik 5 etapų bosus',k:'world',t:5,r:150},
+ {id:'daily1',ic:'📅',n:'Kasdienis',d:'Įveik dienos iššūkį',k:'daily',t:1,r:15},
+ {id:'daily30',ic:'🗓️',n:'Ištikimas pirkėjas',d:'Įveik 30 dienos iššūkių',k:'daily',t:30,r:100},
+ {id:'streak7',ic:'🔥',n:'Savaitė be pertraukos',d:'7 dienų dienos iššūkių serija',k:'streak',t:7,r:70},
+ {id:'help',ic:'🧰',n:'Pagalbos ranka',d:'Panaudok pagalbą',k:'boost',t:1,r:5},
+];
+function achStats(){const s=store.get('prekes.ach',{c:{},got:{}});s.c=s.c||{};s.got=s.got||{};return s}
+function achVal(k,s){let v=0;
+  if(k==='lv')return Object.keys(best).filter(l=>best[l]>0).length;
+  if(k==='s4')return Object.keys(best).filter(l=>best[l]>=4).length;
+  if(k==='stars'){for(const l in best)v+=best[l]||0;return v}
+  if(k==='boss')return Object.keys(best).filter(l=>best[l]>0&&kindOf(+l)!=='n').length;
+  if(k==='world')return Object.keys(best).filter(l=>best[l]>0&&qOf(+l)===STAGE).length;
+  return s.c[k]||0}
+function achAdd(k,n){if(tmOn())return;const s=achStats();s.c[k]=(s.c[k]||0)+n;store.set('prekes.ach',s);achCheck()}
+function achSet(k,v){if(tmOn())return;const s=achStats();s.c[k]=Math.max(s.c[k]||0,v);store.set('prekes.ach',s);achCheck()}
+function achCheck(){const s=achStats(),fresh=[];ACH.forEach(a=>{if(!s.got[a.id]&&achVal(a.k,s)>=a.t){s.got[a.id]=Date.now();fresh.push(a)}});
+  if(!fresh.length)return;store.set('prekes.ach',s);
+  fresh.forEach((a,i)=>setTimeout(()=>{addCoins(a.r);sfx('unlock');achBanner(a);renderHUD()},600+i*2600))}
+function achBanner(a){const e=document.createElement('div');e.className='achb';e.innerHTML=`<b>${a.ic}</b><div><small>🏆 Pasiekimas</small><strong>${a.n}</strong><span>${a.d} · 🪙 +${a.r}</span></div>`;document.body.appendChild(e);
+  e.animate([{transform:'translate(-50%,-140%)'},{transform:'translate(-50%,0)',offset:.12},{transform:'translate(-50%,0)',offset:.88},{transform:'translate(-50%,-140%)'}],{duration:2500,easing:'ease-in-out'}).onfinish=()=>e.remove()}
+function openAch(back){const s=achStats(),n=ACH.filter(a=>s.got[a.id]).length;
+  showCard(`<h2>🏆 Pasiekimai</h2><p>${n} / ${ACH.length}</p><div class="achl">${ACH.map(a=>{const got=s.got[a.id],v=Math.min(a.t,achVal(a.k,s));
+    return `<div class="acha${got?' got':''}"><b>${a.ic}</b><div><strong>${a.n}</strong><span>${a.d}</span>${got?'':`<i><u style="width:${v/a.t*100}%"></u></i><small>${v} / ${a.t}</small>`}</div><em>${got?'✅':'🪙 '+a.r}</em></div>`}).join('')}</div><button id="ab">← Atgal</button>`);
+  $('ab').onclick=()=>back?back():closeCard()}
+/* ===================== PAGRINDINIS MENIU ===================== */
+var HOME={on:false};
+function showHome(){HOME.on=true;if(game&&curWorld)setBg(curWorld);let tot=0;for(const k in best)tot+=best[k]||0;const w=worldOf(level);
+  $('home').innerHTML=`<div class="hm"><div class="hlogo"><div>${[0,1,2].map(()=>`<span>${w.items[0]}</span>`).join('')}</div><i></i></div><h1>Prekių<br>spūstis</h1>
+    <p class="hst">${w.emoji} Etapas ${cyc(level)+1} · Lygis ${level}<br>★ ${tot} · 🪙 ${COINS}</p>
+    <button class="primary big" id="hpl">▶ ${unlocked>1?'Tęsti':'Žaisti'}</button>
+    <button id="hdl">📅 Dienos iššūkis${dailyDone()?' ✅':' · 🪙'}</button><button id="hlv">🗺️ Lygiai</button><button id="hac">🏆 Pasiekimai</button><button id="hst">⚙️ Nustatymai</button>
+    <div class="ver">Versija ${VERSION}</div></div>`;$('home').classList.add('show');
+  $('hpl').onclick=()=>{auInit();hideHome()};$('hdl').onclick=()=>{auInit();startDaily()};$('hac').onclick=()=>openAch();$('hlv').onclick=()=>{hideHome();openMenu()};$('hst').onclick=()=>openSettings()}
+function hideHome(){HOME.on=false;$('home').classList.remove('show');
+  const hi=hintItems(),seen=store.get('prekes.seenHints',{});if(game&&game.moves===0&&hi.some(h=>h[0]!=='chal'&&!seen[h[0]]))setTimeout(()=>{if(!$('overlay').classList.contains('show'))showHints()},400)}
+/* ===================== VERSIJA IR ATNAUJINIMAI ===================== */
+var UPD={latest:null,reg:null};
+const verCmp=(a,b)=>{const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d}return 0};
+const hosted=()=>/^https?:$/.test(location.protocol)&&/github\.io$/.test(location.hostname);
+async function checkUpdate(manual){
+  const say=(t,c)=>{if(!manual)return;const e=$('cus');if(e){e.innerHTML=t;e.style.color=c||''}else toast(t,'')};
+  say('⏳ Tikrinama…');
+  if(!hosted())return say('ℹ️ Šioje peržiūroje atnaujinimai netikrinami – tik įdiegtame žaidime.');
+  if(!navigator.onLine)return say('📴 Nėra interneto ryšio. Prisijunk ir bandyk dar kartą.','#fca5a5');
+  try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000);const r=await fetch('version.json?t='+Date.now(),{cache:'no-store',signal:ctl.signal});clearTimeout(tm);if(!r.ok)throw 0;const j=await r.json();UPD.latest=j.version;
+    if(verCmp(j.version,VERSION)>0){$('updt').textContent='Yra nauja versija '+j.version+(j.notes?' – '+j.notes:'');$('upd').classList.add('show');
+      say(`🆕 Yra nauja versija <b>${j.version}</b>${j.notes?' – '+j.notes:''}<br><button class="primary" id="cun" style="margin-top:8px;width:100%">Atnaujinti dabar</button>`,'#86efac');const b=$('cun');if(b)b.onclick=applyUpdate}
+    else say(`✅ Turi naujausią versiją (${VERSION})`,'#86efac');
+  }catch(e){say(navigator.onLine?'⚠️ Nepavyko pasiekti serverio. Patikrink internetą ir bandyk dar kartą.':'📴 Nėra interneto ryšio.','#fca5a5')}}
+async function applyUpdate(){$('updb').textContent='Atnaujinama…';
+  try{if(UPD.reg){await UPD.reg.update()}const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}catch(e){}
+  location.reload()}
+$('updb').onclick=applyUpdate;$('updx').onclick=()=>$('upd').classList.remove('show');
+if(hosted()&&'serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(r=>{UPD.reg=r}).catch(()=>{})}
+setTimeout(()=>checkUpdate(false),1500);addEventListener('online',()=>checkUpdate(false));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate(false)});
+/* ===================== PALEIDIMAS ===================== */
+HOME.on=true;newGame(level,false);showHome();setTimeout(achCheck,2500);
+
+</script>
+</body>
+</html>
