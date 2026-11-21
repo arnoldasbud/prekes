@@ -557,7 +557,7 @@ class Game{
     this.ps={};for(const t in this.perish)this.ps[t]={left:this.perish[t]*1000,sp:0};
     const r=rng(L*31+7);
     if(this.chalOn){const ct=['combo','first','noboost'][Math.floor(r()*3)];
-      this.chal=ct==='combo'?{type:'combo',n:this.K>=10?3:2}:ct==='first'?{type:'first',t:Math.floor(r()*this.T)}:{type:'noboost'}}else this.chal=null}
+      this.chal=ct==='combo'?{type:'combo',n:this.K>=10?3:2}:ct==='first'?{type:'first',t:simSol(this.sh,this.sol).order[0]}:{type:'noboost'}}else this.chal=null}   // „pirmą išvalyk“ – ta rūšis, kurią sprendimas išvalo pirmą, todėl visada įmanoma
   get timeLimit(){return this.time+this.extraT}
   remaining(){let r=0;const n=c=>c&&c.t>=0?1:0;for(const s of this.sh){r+=s.front.reduce((a,c)=>a+n(c),0);for(let k=s.li+1;k<s.layers.length;k++)r+=s.layers[k].reduce((a,c)=>a+n(c),0)}return r}
   won(){return this.targets?this.targets.every(t=>this.ct.includes(t)):this.remaining()===0}
@@ -626,7 +626,7 @@ class Game{
 </script>
 <script>
 /* ===================== VALDYMAS ===================== */
-const VERSION='1.5.2';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
+const VERSION='1.5.3';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let unlocked=store.get('prekes.unlocked',1),level=Math.min(unlocked,MAXL),best=store.get('prekes.stars',{});
