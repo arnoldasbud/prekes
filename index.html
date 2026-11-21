@@ -626,7 +626,7 @@ class Game{
 </script>
 <script>
 /* ===================== VALDYMAS ===================== */
-const VERSION='1.5.0';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
+const VERSION='1.5.1';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let unlocked=store.get('prekes.unlocked',1),level=Math.min(unlocked,MAXL),best=store.get('prekes.stars',{});
@@ -1165,6 +1165,10 @@ function openSettings(){showCard(`<div class="ribbon blue">Nustatymai</div><div 
     const ok=()=>{if($('tpw').value.trim().toLowerCase()==='prekes'){closeCard();setTest(1);toast('🧪 Testo režimas įjungtas','Visi lygiai atrakinti')}else{$('tpe').textContent='Neteisingas slaptažodis';$('tpw').select()}};
     $('tok').onclick=ok;$('tpw').onkeydown=e=>{if(e.key==='Enter')ok()};$('tno').onclick=closeCard;setTimeout(()=>$('tpw').focus(),50)}}
 $('lvlBtn').onclick=()=>{PZ.on=true;openMenu()};
+/* baigtas lygis (laimėtas ar pralaimėtas) ir uždarytas langas: laimėjus – kitas lygis, pralaimėjus – tas pats iš naujo */
+function afterFinished(){const g=game;
+  if(g.status==='win'){if(g.special){newGame(Math.min(unlocked,MAXL));showHome();return}newGame(playable(level+1)?level+1:Math.min(unlocked,MAXL))}
+  else newGame(level,false,modeOf(g))}
 /* ===================== LYGIŲ ŽEMĖLAPIS ===================== */
 let testMode=store.get('prekes.test',0);
 function playable(L){if(L<1||L>MAXL)return false;if(testMode)return true;return L<=unlocked}
@@ -1190,7 +1194,7 @@ function renderMap(){
   h+=`<div class="pin" style="left:${x(front)}px;top:${y(front)}px">🛒</div>`;
   if(maxL<MAXL)h+=`<div class="fog" style="height:${TOP+ROW}px">☁️ Toliau – dar ${MAXL-maxL} lygių</div>`;
   $('menu').innerHTML=`<div class="mtop"><b>🗺️ Žemėlapis</b><div class="sp"><span>⭐ ${all}</span><span>🪙 ${COINS}</span></div><button id="mx">✕</button></div><div class="map"><div class="mapIn" style="height:${H}px">${h}</div></div><div class="mplay"><button id="mpl">▶ Lygis ${front}</button></div>`;
-  $('mx').onclick=()=>$('menu').classList.remove('show');$('mpl').onclick=()=>pickLevel(front);
+  $('mx').onclick=()=>{$('menu').classList.remove('show');if(game&&game.status!=='play')afterFinished()};$('mpl').onclick=()=>pickLevel(front);
   $('menu').querySelectorAll('.nd').forEach(b=>b.onclick=()=>{const L=+b.dataset.l;if(playable(L))pickLevel(L);else{b.animate([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'none'}],{duration:250});sfx('locked');buzz([12,40,12]);toast('🔒 Lygis dar užrakintas','Pirmiausia įveik ankstesnius lygius')}});
 }
 /* ===================== DIENOS IŠŠŪKIS ===================== */
@@ -1281,7 +1285,7 @@ function openAdvent(back){const A=advInfo(),st=advState(),open=testMode?24:A?A.o
     <p>${!A&&!testMode?'Renginys vyksta gruodžio 1 – sausio 6 d.':A&&A.pre?'Renginys prasidės gruodžio 1 d. Pirmąsias dureles gali atidaryti jau dabar!':'Kiekvieną gruodžio dieną atsidaro naujos durelės su kalėdiniu lygiu ir dovana.'}</p>
     <div class="adv">${ADV_POS.map(d=>{const done=st[d],can=d<=open;return `<button class="dr${done?' done':can?' open':''}${d===24?' big':''}" data-d="${d}" ${can?'':'disabled'}><b>${d}</b><small>${done?'★'.repeat(done):can?(d===24?'🎁':'🎄'):'🔒'}</small></button>`}).join('')}</div>
     <p class="coin">Atidaryta ${Object.keys(st).length}/24 · už visas – didžioji dovana 🎁</p><button id="avx">${back?'← Atgal':'Uždaryti'}</button>`);
-  $('avx').onclick=()=>back?back():closeCard();
+  $('avx').onclick=()=>{if(back)return back();closeCard();if(game&&game.status!=='play'&&!HOME.on){newGame(Math.min(unlocked,MAXL));showHome()}};
   document.querySelectorAll('.dr').forEach(b=>b.onclick=()=>{const d=+b.dataset.d;if(d>open)return;sfx('click');startAdvent(d)})}
 function startAdvent(d){HOME.on=false;$('home').classList.remove('show');closeCard();DAILY.on=false;newGame(EVENT0+d,false,'event')}
 function advWin(g0){const g=game,d=g.event,st=g.stars(),S=advState(),first=!S[d],TM=tmOn();let coins=0;const got={};
