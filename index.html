@@ -317,6 +317,17 @@ body.w4{background:radial-gradient(130% 85% at 50% 0%,#3b5bdb 0,#1e3a8a 30%,#172
 .advt{display:flex!important;flex-direction:row!important;align-items:center;gap:10px;text-align:left;color:#fff!important;background:linear-gradient(#ef4444,#b91c1c)!important;border-color:#fde68a!important;box-shadow:0 5px 0 #7f1d1d,0 8px 16px rgba(0,0,0,.3)!important;text-shadow:0 2px 0 #7f1d1d}
 .advt b{font-size:34px}.advt span{display:flex;flex-direction:column}.advt small{font-size:12px;font-weight:600;color:#fde68a}
 .advt.hot{animation:btnp 1.2s ease-in-out infinite}
+
+/* ===== pirkėjų eilė ===== */
+.rvb{position:absolute;left:0;top:0;white-space:nowrap;background:#fff;color:#3730a3;font-weight:700;font-size:13px;padding:4px 10px;border-radius:14px;border:2px solid #a5b4fc;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+.it .rv{position:absolute;left:-6px;top:-6px;z-index:3;font-style:normal;font-size:calc(var(--sz)*.3);line-height:1;padding:1px;border-radius:50%;background:#fff;border:2px solid #a5b4fc;text-shadow:none;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.it.rsv{opacity:.92}
+.it.want{text-shadow:0 0 2px #fff,0 0 12px #22c55e,0 0 4px #4ade80,0 4px 4px rgba(0,0,0,.35)}
+.ord.act{box-shadow:0 4px 0 #16a34a,0 0 0 3px #4ade80,0 6px 14px rgba(0,0,0,.3);transform:scale(1.04)}
+.ord.act::before{content:'Aptarnaujamas';position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:#16a34a;color:#fff;font-size:10px;font-weight:700;border-radius:8px;padding:0 6px;white-space:nowrap;border:2px solid #fff}
+.ord.wait{opacity:.8;filter:saturate(.75)}
+.ord.done::before{display:none}
+#orders{padding-top:10px}
 </style>
 </head>
 <body class="w0">
@@ -394,11 +405,12 @@ function mechsOf(L){
   if(pos<3&&kd==='n')extra=0;                       // pirmi 3 lygiai – naujovė viena
   if(q%3===2&&kd==='n')extra=Math.max(0,extra-1);   // atokvėpio lygiai
   extra=Math.min(extra,kd==='big'?5:4);             // daugiausia 5–6 kliūtys vienu metu
-  return [feat,...shuffle(prev.slice(),pr).slice(0,Math.min(extra,prev.length))]}
+  let L_=[feat,...shuffle(prev.slice(),pr).slice(0,Math.min(extra,prev.length))];
+  if(L_.includes('orders')&&L_.includes('perish'))L_=L_.filter(m=>m!==(feat==='perish'?'orders':'perish'));   // užsakymų lygiai – be laikmačio, todėl be gendančių prekių
+  return L_}
 function eventMechs(d){const pr=rng(d*7717+3),on=new Set();
-  if(d%3!==0)on.add('orders');if(d>=4&&d%2===0)on.add('perish');
+  if(d%3!==0||d===24)on.add('orders');else if(d>=4)on.add('perish');
   const pool=shuffle(['lock','conv','frozen','elev','hidden','dark','small'],pr),extra=d<6?0:d<12?1:d<20?2:3;for(let i=0;i<extra;i++)on.add(pool[i]);
-  if(d===12||d===24){on.add('orders');on.add('perish')}
   return [...on]}
 function params(L){
   const ev=isEv(L),d=ev?L-EVENT0:0,c=ev?0:cyc(L),q=ev?d:qOf(L),pr=rng(L*1013+11),kd=kindOf(L);
@@ -506,11 +518,16 @@ function simSol(sh,sol){const sim=JSON.parse(JSON.stringify(sh)),appear={},match
 /* užsakymai – iš vėliau sprendime išvalomų (giliau paslėptų) prekių; gendančios – tos, kurias sprendime greitai pavyksta išvalyti */
 function planExtras(p,res,r){const out={orders:null,targets:null,perish:{}};if(!p.mech.orders&&!p.mech.perish)return out;
   const info=simSol(res.sh,res.sol);let tg=[];
-  if(p.mech.orders){const nT=Math.max(3,Math.min(12,Math.round(p.K*.35))),late=info.order.slice(Math.floor(info.order.length*.4));
-    tg=shuffle(late.slice(),r).slice(0,Math.min(nT,late.length));const groups=[];
-    for(let i=0;i<tg.length;){const n=Math.min(tg.length-i,r()<.2?1:r()<.65?2:3);groups.push(tg.slice(i,i+n));i+=n}
+  if(p.mech.orders){const ord=info.order,len=ord.length,nT=Math.max(3,Math.min(12,Math.round(p.K*.4),len));
+    // užsakytos prekės išdėstytos per visą sprendimą (nuo ~20 % iki ~92 %), o pirkėjų eilė = sprendimo išvalymo tvarka,
+    // todėl sprendimas niekada nebando išvalyti prekės anksčiau, nei ateina jos pirkėjo eilė
+    const a=Math.floor(len*.2),b=Math.max(a+nT-1,Math.floor(len*.92)-1),idx=new Set();
+    for(let j=0;j<nT;j++)idx.add(Math.min(len-1,Math.round(a+(b-a)*j/Math.max(1,nT-1))));
+    tg=[...idx].sort((x,y)=>x-y).map(i=>ord[i]);const groups=[];
+    for(let i=0;i<tg.length;){const n=Math.min(tg.length-i,r()<.25?1:r()<.7?2:3);groups.push(tg.slice(i,i+n));i+=n}
     out.orders=groups.map((ts,j)=>({who:j,ts}));out.targets=tg;
-    const last=Math.max(...tg.map(t=>info.match[t]));out.parMoves=last+Math.max(2,Math.round(last*.1));out.parTime=Math.max(15,Math.round(p.parTime*last/res.sol.length))}
+    const last=info.match[tg[tg.length-1]];out.parMoves=last;out.maxMoves=last+Math.max(6,Math.round(last*(.7-.25*p.D)));out.okMoves=Math.round((out.parMoves+out.maxMoves)/2);
+    out.parTime=Math.max(15,Math.round(p.parTime*last/res.sol.length))}
   if(p.mech.perish){const gap=t=>info.match[t]-(info.appear[t]||0),n=Math.max(1,Math.min(8,Math.round(p.K*p.mech.perish)));
     const cand=info.order.filter(t=>!tg.includes(t)).sort((a,b)=>gap(a)-gap(b)).slice(0,Math.max(n,Math.round(n*1.8)));
     shuffle(cand,r).slice(0,n).forEach(t=>{out.perish[t]=Math.min(80,Math.max(20,Math.round(gap(t)*3.5+15)))})}
@@ -522,11 +539,13 @@ function generate(L){
   for(let attempt=0;attempt<40;attempt++){const res=buildRev(p,rng(L*7919+attempt*104729+13));if(!res)continue;
     const ff=res.sh.reduce((a,s)=>a+s.front.filter(x=>!x).length,0);if(ff>bf){bf=ff;best=res}if(ff>=want)break}
   const ex=planExtras(p,best,rng(L*5303+17));
-  return {...p,sh:best.sh,sol:best.sol,parMoves:ex.parMoves||best.sol.length+Math.max(2,Math.round(best.sol.length*.1)),parTime:ex.parTime||p.parTime,orders:ex.orders,targets:ex.targets,perish:ex.perish}}
+  return {...p,sh:best.sh,sol:best.sol,parMoves:ex.parMoves||best.sol.length+Math.max(2,Math.round(best.sol.length*.1)),parTime:ex.parTime||p.parTime,orders:ex.orders,targets:ex.targets,perish:ex.perish,maxMoves:ex.maxMoves||0,okMoves:ex.okMoves||0}}
 /* --- sprendėjas: DFS su euristika ir aplankytų būsenų atmintimi (sugedusios prekės – nejudinamos kliūtys) --- */
-function toS(sh,m){let r=0,jn=0;const J=c=>c.t<0?{t:-1000-(jn++),thr:1e9}:{t:c.t,thr:c.thr};
-  const o={m,sh:sh.map(s=>{const lay=s.layers.map(l=>l.filter(Boolean).map(J));const fr=s.front.filter(Boolean).map(J);
-  r+=fr.filter(c=>c.t>=0).length;for(let k=s.li+1;k<lay.length;k++)r+=lay[k].filter(c=>c.t>=0).length;return {cap:s.cap,lock:s.lock,li:s.li,lay,fr}})};o.r=r;return o}
+function toS(sh,m,opt){let r=0,jn=0;const res=opt&&opt.res,goal=opt&&opt.goal;if(opt)opt.back=new Map();
+  const J=c=>{if(c.t<0)return {t:-1000-(jn++),thr:1e9};if(res&&res.has(c.t)){const id=-5000-(jn++);opt.back.set(id,c.t);return {t:id,thr:c.thr}}return {t:c.t,thr:c.thr}};
+  const cnt=c=>c.t>=0&&(!goal||goal.has(c.t))?1:0;
+  const o={m,goal:goal||null,sh:sh.map(s=>{const lay=s.layers.map(l=>l.filter(Boolean).map(J));const fr=s.front.filter(Boolean).map(J);
+  r+=fr.reduce((a,c)=>a+cnt(c),0);for(let k=s.li+1;k<lay.length;k++)r+=lay[k].reduce((a,c)=>a+cnt(c),0);return {cap:s.cap,lock:s.lock,li:s.li,lay,fr}})};o.r=r;return o}
 function sKey(s){let k=s.m+'|';for(const x of s.sh){k+=x.li+':'+x.fr.map(c=>c.thr>s.m?c.t+'f'+c.thr:c.t).sort().join(',')+'/'}return k}
 function sMoves(s){const out=[],m=s.m,S=s.sh;
   for(let a=0;a<S.length;a++){const A=S[a];if(A.lock>m||!A.fr.length)continue;
@@ -542,23 +561,54 @@ function sMoves(s){const out=[],m=s.m,S=s.sh;
   out.sort((x,y)=>y.sc-x.sc);return out}
 function sApply(s,mv){const S=s.sh.slice(),A={...S[mv.a],fr:S[mv.a].fr.slice()},B={...S[mv.b],fr:S[mv.b].fr.slice()};S[mv.a]=A;S[mv.b]=B;
   const i=A.fr.findIndex(c=>c.t===mv.t&&c.thr<=s.m);const c=A.fr.splice(i,1)[0];B.fr.push(c);let m=s.m,r=s.r;
-  if(B.cap===3&&B.fr.length===3&&B.fr[0].t===B.fr[1].t&&B.fr[1].t===B.fr[2].t){B.fr=[];m++;r-=3}
+  if(B.cap===3&&B.fr.length===3&&B.fr[0].t===B.fr[1].t&&B.fr[1].t===B.fr[2].t){B.fr=[];m++;if(!s.goal||s.goal.has(mv.t))r-=3}
   for(const X of [A,B])while(!X.fr.length&&X.li+1<X.lay.length){X.li++;X.fr=X.lay[X.li].slice()}
-  return {m,r,sh:S}}
+  return {m,r,sh:S,goal:s.goal}}
 function solve(s0,limit){const seen=new Set(),path=[];let nodes=0;
   const rec=s=>{if(s.r===0)return true;if(++nodes>limit)return false;const k=sKey(s);if(seen.has(k))return false;seen.add(k);
     for(const mv of sMoves(s)){path.push(mv);if(rec(sApply(s,mv)))return true;path.pop();if(nodes>limit)return false}return false};
   return rec(s0)?path.slice():null}
+// trumpo kelio paieška užuominoms: svertinė A* (g + 2·h), nagrinėjami tik geriausi ėjimai; h – kiek dar mažiausiai trūksta ėjimų tikslinėms prekėms
+function hEst(s){const best=new Map(),seen=new Set();let need=0;   // + užšalusios prekės ir užrakintos lentynos: reikia dar tiek išvalymų
+  const G=c=>c.t>=0&&(!s.goal||s.goal.has(c.t));
+  const dig=new Map(),fr=new Map();   // dig: pigiausias atkasimas (kiek prekių reikia patraukti), kai prekė giliau
+  for(const B of s.sh){const loc=new Map();let has=false;for(const c of B.fr){if(!G(c))continue;seen.add(c.t);has=true;if(c.thr>need)need=c.thr;fr.set(c.t,(fr.get(c.t)||0)+1);if(B.cap===3&&c.thr<=s.m)loc.set(c.t,(loc.get(c.t)||0)+1)}
+    for(const [t,n] of loc)if(n>(best.get(t)||0))best.set(t,n);
+    let above=B.fr.length;
+    for(let k=B.li+1;k<B.lay.length;k++){for(const c of B.lay[k])if(G(c)){seen.add(c.t);has=true;if(c.thr>need)need=c.thr;if(!dig.has(c.t)||above<dig.get(c.t))dig.set(c.t,above)}above+=B.lay[k].length}
+    if(has&&B.lock>need)need=B.lock}
+  let h=0;for(const t of seen){h+=3-(best.get(t)||0);if((fr.get(t)||0)<3&&dig.has(t))h+=dig.get(t)}return h+2*Math.max(0,need-s.m)}
+const HINT={n:6000,k:24,ms:450};
+// vaikų būsenos nelaikomos atmintyje: eilėje tik tėvas + ėjimas, būsena perskaičiuojama ją išėmus (kad užtektų atminties telefone)
+function solveB(s0,limit,K,ms){if(s0.r===0)return [];const t0=Date.now();let bestN=null;
+  const H=[],push=n=>{H.push(n);let i=H.length-1;while(i){const p=(i-1)>>1;if(H[p].f<=n.f)break;H[i]=H[p];i=p}H[i]=n},
+  pop=()=>{const top=H[0],l=H.pop();if(H.length){let i=0;for(;;){let c=2*i+1;if(c>=H.length)break;if(c+1<H.length&&H[c+1].f<H[c].f)c++;if(H[c].f>=l.f)break;H[i]=H[c];i=c}H[i]=l}return top};
+  const seen=new Map(),h0=hEst(s0);push({s:s0,g:0,f:2*h0,h:h0,p:null,mv:null});seen.set(sKey(s0),0);let n=0;
+  const pathOf=nd=>{const path=[];for(let x=nd;x.p;x=x.p)path.push(x.mv);return path.reverse()};
+  while(H.length&&n++<limit){if(ms&&(n&63)===0&&Date.now()-t0>ms)break;const nd=pop();if(!nd.s)nd.s=sApply(nd.p.s,nd.mv);
+    if(nd.s.r===0)return pathOf(nd);
+    if(nd.p&&(!bestN||nd.h<bestN.h||(nd.h===bestN.h&&nd.g<bestN.nd.g)))bestN={h:nd.h,nd};
+    const mvs=sMoves(nd.s);let k=0;
+    for(const mv of mvs){if(k>=(K||14))break;const c=sApply(nd.s,mv),key=sKey(c),g=nd.g+1;if(seen.has(key)&&seen.get(key)<=g)continue;seen.set(key,g);k++;
+      const h=hEst(c);push({s:c.r===0?c:null,g,f:g+2*h,h,p:nd,mv})}}
+  if(bestN&&bestN.h<h0){const p=pathOf(bestN.nd);p.partial=true;return p}   // pilno kelio nerado – bent jau kelias arčiau tikslo
+  return null}
 /* --- žaidimo būsena --- */
 const isTriF=f=>f.length===3&&f.every(Boolean)&&f[0].t>=0&&f[0].t===f[1].t&&f[1].t===f[2].t;
 class Game{
   constructor(L){const g=generate(L);Object.assign(this,g);this.status='play';this.moves=0;this.m=0;this.combo=0;this.maxCombo=0;this.lastMatch=-1e9;this.hist=[];this.used=0;this.firstType=null;
-    this.el=0;this.started=false;this.freeze=0;this.extraT=0;this.cleared=0;this.ct=[];this.spoiled=0;
+    this.el=0;this.started=false;this.freeze=0;this.extraT=0;this.cleared=0;this.ct=[];this.spoiled=0;this.moveMode=!!this.orders;this.extraMv=0;
     this.ps={};for(const t in this.perish)this.ps[t]={left:this.perish[t]*1000,sp:0};
     const r=rng(L*31+7);
     if(this.chalOn){const ct=['combo','first','noboost'][Math.floor(r()*3)];
       this.chal=ct==='combo'?{type:'combo',n:this.K>=10?3:2}:ct==='first'?{type:'first',t:simSol(this.sh,this.sol).order[0]}:{type:'noboost'}}else this.chal=null}   // „pirmą išvalyk“ – ta rūšis, kurią sprendimas išvalo pirmą, todėl visada įmanoma
   get timeLimit(){return this.time+this.extraT}
+  get moveLimit(){return this.maxMoves+this.extraMv}
+  movesLeft(){return this.moveLimit-this.moves}
+  activeIdx(){return this.orders?this.orders.findIndex(o=>!o.ts.every(t=>this.ct.includes(t))):-1}
+  reserved(t){if(!this.orders||this.ct.includes(t))return false;const ai=this.activeIdx();if(ai<0)return false;   // būsimo pirkėjo prekė – kol kas neišsivalo
+    for(let j=ai+1;j<this.orders.length;j++)if(this.orders[j].ts.includes(t))return true;return false}
+  wanted(t){const ai=this.activeIdx();return ai>=0&&this.orders[ai].ts.includes(t)&&!this.ct.includes(t)}
   remaining(){let r=0;const n=c=>c&&c.t>=0?1:0;for(const s of this.sh){r+=s.front.reduce((a,c)=>a+n(c),0);for(let k=s.li+1;k<s.layers.length;k++)r+=s.layers[k].reduce((a,c)=>a+n(c),0)}return r}
   won(){return this.targets?this.targets.every(t=>this.ct.includes(t)):this.remaining()===0}
   ordersLeft(){return this.orders?this.orders.filter(o=>!o.ts.every(t=>this.ct.includes(t))).length:0}
@@ -567,49 +617,58 @@ class Game{
   movable(c){return !!c&&c.t>=0&&c.thr<=this.m}
   canDrop(b){return this.unlocked(b)&&this.sh[b].front.some(x=>!x)}
   snap(){return JSON.stringify({sh:this.sh,m:this.m,moves:this.moves,cleared:this.cleared,ct:this.ct,ps:this.ps,spoiled:this.spoiled})}
-  restore(s){const o=JSON.parse(s);this.sh=o.sh;this.m=o.m;this.moves=o.moves;this.cleared=o.cleared;this.ct=o.ct;this.ps=o.ps;this.spoiled=o.spoiled}
+  restore(s){this.hp=null;this.lastMv=null;const o=JSON.parse(s);this.sh=o.sh;this.m=o.m;this.moves=o.moves;this.cleared=o.cleared;this.ct=o.ct;this.ps=o.ps;this.spoiled=o.spoiled}
   junkAt(){for(let i=0;i<this.sh.length;i++){if(!this.unlocked(i))continue;const k=this.sh[i].front.findIndex(c=>c&&c.t<0);if(k>=0)return [i,k]}return null}
   hasMove(){if(this.junkAt())return true;for(let a=0;a<this.sh.length;a++){if(!this.unlocked(a)||!this.sh[a].front.some(c=>this.movable(c)))continue;for(let b=0;b<this.sh.length;b++)if(b!==a&&this.canDrop(b))return true}return false}
   move(a,ia,b,ib,now){
     const A=this.sh[a],B=this.sh[b];if(a===b||!this.unlocked(a)||!this.movable(A.front[ia])||!this.canDrop(b))return null;
     this.hist.push(this.snap());if(this.hist.length>40)this.hist.shift();
     if(ib==null||B.front[ib])ib=B.front.findIndex(x=>!x);
+    const mt=A.front[ia].t;this.lastMv={a,b,t:mt};if(this.hp){const p=this.hp.path[this.hp.i];if(p&&p.a===a&&p.b===b&&p.rt===mt)this.hp.i++;else this.hp=null}
     B.front[ib]=A.front[ia];A.front[ia]=null;this.moves++;
     const ev={a,ia,b,ib,matched:[],adv:[],thaw:[],unlock:[]};this.resolve(ev,now);return ev}
   trash(s,k,now){const S=this.sh[s],c=S&&S.front[k];if(!c||c.t>=0||!this.unlocked(s))return null;   // sugedusią prekę išmesti į šiukšliadėžę
-    this.hist.push(this.snap());if(this.hist.length>40)this.hist.shift();S.front[k]=null;this.moves++;
+    this.hp=null;this.hist.push(this.snap());if(this.hist.length>40)this.hist.shift();S.front[k]=null;this.moves++;
     const ev={trash:[s,k,c.jt],matched:[],adv:[],thaw:[],unlock:[]};this.resolve(ev,now);return ev}
-  spoil(t){let n=0;const f=c=>{if(c&&c.t===t){c.jt=t;c.t=-1;c.thr=0;c.hid=false;n++}};
+  spoil(t){this.hp=null;let n=0;const f=c=>{if(c&&c.t===t){c.jt=t;c.t=-1;c.thr=0;c.hid=false;n++}};
     this.sh.forEach(s=>{s.front.forEach(f);for(let k=s.li+1;k<s.layers.length;k++)s.layers[k].forEach(f)});this.ps[t].sp=1;this.spoiled+=n;return n}
   tickPerish(dt){const out=[];for(const t in this.ps){const p=this.ps[t],tn=+t;if(p.sp||this.ct.includes(tn))continue;
       if(this.sh.some((s,i)=>this.unlocked(i)&&s.front.some(c=>c&&c.t===tn))){p.left-=dt;if(p.left<=0){p.left=0;this.spoil(tn);out.push(tn)}}}return out}
   resolve(ev,now){
     const m0=this.m;
-    for(let i=0;i<this.sh.length;i++){const s=this.sh[i],f=s.front;
-      if(s.cap===3&&isTriF(f)){ev.matched.push({s:i,t:f[0].t});s.front=[null,null,null];this.m++;this.cleared+=3;this.ct.push(f[0].t);
-        if(this.firstType==null)this.firstType=f[0].t;
-        this.combo=now-this.lastMatch<=6000?this.combo+1:1;this.lastMatch=now;this.maxCombo=Math.max(this.maxCombo,this.combo)}}
+    // kartojam, nes įvykdžius užsakymą kito pirkėjo jau sudėtas trejetas išsivalo iškart
+    for(let again=true;again;){again=false;
+      for(let i=0;i<this.sh.length;i++){const s=this.sh[i],f=s.front;
+        if(s.cap===3&&isTriF(f)&&!this.reserved(f[0].t)){ev.matched.push({s:i,t:f[0].t});s.front=[null,null,null];this.m++;this.cleared+=3;this.ct.push(f[0].t);again=true;
+          if(this.firstType==null)this.firstType=f[0].t;
+          this.combo=now-this.lastMatch<=6000?this.combo+1:1;this.lastMatch=now;this.maxCombo=Math.max(this.maxCombo,this.combo)}}}
     if(this.m>m0){this.sh.forEach(s=>s.front.forEach(c=>{if(c&&c.hid){c.hid=false;c.rev=1}}));
       this.sh.forEach((s,i)=>{if(s.lock>m0&&s.lock<=this.m)ev.unlock.push(i);s.front.forEach((c,k)=>{if(c&&c.thr>m0&&c.thr<=this.m)ev.thaw.push([i,k])})})}
     for(let i=0;i<this.sh.length;i++){const s=this.sh[i];
       while(s.front.every(x=>!x)&&s.li+1<s.layers.length){s.li++;s.front=s.layers[s.li].slice();ev.adv.push(i)}}
     ev.combo=ev.matched.length?this.combo:0;
-    if(ev.adv.length&&this.sh.some(s=>s.cap===3&&isTriF(s.front)))this.resolve(ev,now);
+    if(ev.adv.length&&this.sh.some(s=>s.cap===3&&isTriF(s.front)&&!this.reserved(s.front[0].t)))this.resolve(ev,now);
     return ev}
   hint(){const j=this.junkAt();if(j)return {junk:j,a:j[0],ia:j[1],b:-1};
-    const st=toS(this.sh,this.m),mvs=sMoves(st);if(!mvs.length)return null;
-    let mv=mvs[0];if(mv.sc<1000){const sol=solve(st,3000);if(sol&&sol.length)mv=sol[0]}const A=this.sh[mv.a];
-    const ia=A.front.findIndex(c=>c&&c.t===mv.t&&c.thr<=this.m);return {a:mv.a,ia,b:mv.b}}
-  addShelf(){this.sh.push({cap:3,lock:0,li:0,layers:[[null,null,null]],front:[null,null,null],bonus:1})}
-  shuffleFront(r){const pos=[],cells=[];this.sh.forEach((s,i)=>{if(!this.unlocked(i))return;s.front.forEach((c,k)=>{if(this.movable(c)){pos.push([i,k]);cells.push(c)}})});
+    const hp=this.hp;if(hp&&hp.i<hp.path.length&&hp.ai===this.activeIdx()){const p=hp.path[hp.i],A=this.sh[p.a];
+      const ia=this.unlocked(p.a)&&this.canDrop(p.b)&&p.a!==p.b?A.front.findIndex(c=>c&&c.t===p.rt&&this.movable(c)):-1;if(ia>=0)return {a:p.a,ia,b:p.b}}
+    this.hp=null;let opt=null;if(this.orders){const ai=this.activeIdx(),res=new Set(),goal=new Set();this.orders.forEach((o,k)=>o.ts.forEach(t=>{if(this.ct.includes(t))return;if(k===ai)goal.add(t);else if(k>ai)res.add(t)}));opt={res,goal}}
+    const st=toS(this.sh,this.m,opt),mvs=sMoves(st);if(!mvs.length)return null;
+    const back=t=>opt&&opt.back.has(t)?opt.back.get(t):t;
+    const lm=this.lastMv;let mv=mvs.find(m=>!(lm&&m.a===lm.b&&m.b===lm.a&&back(m.t)===lm.t))||mvs[0];   // nesiūlom tiesiog grąžinti ką tik padaryto ėjimo
+    if(mv.sc<1000||(opt&&!opt.goal.has(mv.t))){const sol=solveB(st,HINT.n,HINT.k,HINT.ms);if(sol&&sol.length){mv=sol[0];this.hp={ai:this.activeIdx(),i:0,path:sol.map(m=>({a:m.a,b:m.b,rt:back(m.t)}))}}}
+    const A=this.sh[mv.a],tt=back(mv.t);
+    const ia=A.front.findIndex(c=>c&&c.t===tt&&c.thr<=this.m);return {a:mv.a,ia,b:mv.b}}
+  addShelf(){this.hp=null;this.sh.push({cap:3,lock:0,li:0,layers:[[null,null,null]],front:[null,null,null],bonus:1})}
+  shuffleFront(r){this.hp=null;const pos=[],cells=[];this.sh.forEach((s,i)=>{if(!this.unlocked(i))return;s.front.forEach((c,k)=>{if(this.movable(c)){pos.push([i,k]);cells.push(c)}})});
     for(let t=0;t<20;t++){shuffle(cells,r);pos.forEach(([i,k],j)=>this.sh[i].front[k]=cells[j]);
       if(!this.sh.some(s=>s.cap===3&&isTriF(s.front))||t===19)break}}
   magnet(now){ // išvalo 3 tos rūšies prekes, kurių priekyje matosi daugiausia (užsakymų lygiuose – pirmiausia užsakytas)
     const cnt={};this.sh.forEach((s,i)=>s.front.forEach(c=>{if(c&&c.t>=0)cnt[c.t]=(cnt[c.t]||0)+1}));
     const tot={};this.sh.forEach(s=>{s.front.forEach(c=>{if(c&&c.t>=0)tot[c.t]=(tot[c.t]||0)+1});for(let k=s.li+1;k<s.layers.length;k++)s.layers[k].forEach(c=>{if(c&&c.t>=0)tot[c.t]=(tot[c.t]||0)+1})});
-    const want=t=>this.targets&&this.targets.includes(t)&&!this.ct.includes(t)?100:0;
-    const ts=Object.keys(cnt).map(Number).filter(t=>tot[t]>=3).sort((x,y)=>cnt[y]+want(y)-cnt[x]-want(x));if(!ts.length)return null;const t=ts[0];
-    this.hist.push(this.snap());let left=3;const took=[];
+    const want=t=>this.orders&&this.wanted(t)?100:0;
+    const ts=Object.keys(cnt).map(Number).filter(t=>tot[t]>=3&&!this.reserved(t)).sort((x,y)=>cnt[y]+want(y)-cnt[x]-want(x));if(!ts.length)return null;const t=ts[0];
+    this.hp=null;this.hist.push(this.snap());let left=3;const took=[];
     this.sh.forEach((s,i)=>s.front.forEach((c,k)=>{if(left&&c&&c.t===t){s.front[k]=null;left--;took.push([i,k])}}));
     for(let d=1;left&&d<12;d++)this.sh.forEach(s=>{const k0=s.li+d;if(!left||k0>=s.layers.length)return;const l=s.layers[k0];l.forEach((c,k)=>{if(left&&c&&c.t===t){l[k]=null;left--}})});
     this.sh.forEach(s=>{for(let k=s.layers.length-1;k>s.li;k--)if(s.layers[k].every(x=>!x))s.layers.splice(k,1)});
@@ -619,14 +678,15 @@ class Game{
     this.sh.forEach((s,i)=>{if(s.lock>m0&&s.lock<=this.m)ev.unlock.push(i);s.front.forEach((c,k)=>{if(c&&c.thr>m0&&c.thr<=this.m)ev.thaw.push([i,k])})});
     for(let i=0;i<this.sh.length;i++){const s=this.sh[i];while(s.front.every(x=>!x)&&s.li+1<s.layers.length){s.li++;s.front=s.layers[s.li].slice();ev.adv.push(i)}}
     return ev}
-  stars(){return 1+(this.el<=this.parTime*1000?1:0)+(this.moves<=this.parMoves?1:0)+(this.chalOk()?1:0)}
+  stars(){if(this.moveMode)return 1+(this.moves<=this.okMoves?1:0)+(this.moves<=this.parMoves?1:0)+(this.chalOk()?1:0);
+    return 1+(this.el<=this.parTime*1000?1:0)+(this.moves<=this.parMoves?1:0)+(this.chalOk()?1:0)}
   chalOk(){const c=this.chal;if(!c)return false;if(c.type==='combo')return this.maxCombo>=c.n;if(c.type==='first')return this.firstType===c.t;if(c.type==='noboost')return this.used===0&&this.status==='win';return false}
 }
 
 </script>
 <script>
 /* ===================== VALDYMAS ===================== */
-const VERSION='1.5.3';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
+const VERSION='1.6.0';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let unlocked=store.get('prekes.unlocked',1),level=Math.min(unlocked,MAXL),best=store.get('prekes.stars',{});
@@ -651,7 +711,7 @@ function newGame(L,showWorld,mode){
   gen++;level=L;if(!mode)store.set('prekes.level',level);$('menu').classList.remove('show');closeCard();handHide();
   game=new Game(level);game.daily=mode==='daily';game.event=mode==='event'?level-EVENT0:0;game.special=game.daily||!!game.event;LAY.ph=0;LAY.pe2=0;sel=null;hintMv=null;busy=false;$('fx').innerHTML='';
   $('combo').classList.remove('on');$('banner').classList.remove('show');
-  if(!game.special){game.sbonus=streakBonus();game.extraT+=game.sbonus}
+  if(!game.special){game.sbonus=streakBonus();if(game.moveMode){game.sbonus=Math.round(game.sbonus/10);game.extraMv+=game.sbonus}else game.extraT+=game.sbonus}   // užsakymų lygiuose serija duoda ėjimų
   const w=worldOf(level);document.body.className=game.event?'w4':'w'+(cyc(level)%4);
   $('lvlLabel').textContent=game.daily?'📅 Dienos':game.event?'🎄 Durelės '+game.event:'Lygis '+level+KICON[kindOf(level)];
   $('worldLabel').textContent=game.event?'Advento kalendorius':w.emoji+' Etapas '+(cyc(level)+1)+' · '+qOf(level)+'/'+STAGE;ORDSEEN.clear();
@@ -673,9 +733,9 @@ function showBanner(showWorld){const g=game,kd=kindOf(level),w=W(),b=$('banner')
   else if(showWorld||(!g.event&&qOf(level)===1))parts.push(`${w.emoji} Etapas ${cyc(level)+1} · ${w.name}`);
   if(!g.daily){if(kd==='boss')parts.push('🔥 Bosas – mažiau laiko');if(kd==='big')parts.push(g.event?'👑 Kalėdų bosas':'👑 Etapo bosas');}
   const mq=MECH_ORDER.filter((m,i)=>MECH_Q[i]===qOf(level));if(mq.length&&level>STAGE&&!g.special)parts.push(mq.map(m=>w.sk[m].join(' ')).join(' · ')+' grįžta');
-  if(g.orders)parts.push(`${w.sk.orders[0]} Įvykdyk ${g.orders.length} ${plural(g.orders.length,'užsakymą','užsakymus','užsakymų')}`);
+  if(g.orders)parts.push(`${w.sk.orders[0]} ${g.orders.length} ${plural(g.orders.length,'pirkėjas','pirkėjai','pirkėjų')} eilėje · 👣 ${g.moveLimit} ${plural(g.moveLimit,'ėjimas','ėjimai','ėjimų')}`);
   if(g.chal)parts.push('🎯 '+chalText(g.chal));
-  if(g.sbonus)parts.push(`🔥 Serija ${STREAK}: +${g.sbonus} s`);
+  if(g.sbonus)parts.push(`🔥 Serija ${STREAK}: +${g.sbonus} ${g.moveMode?plural(g.sbonus,'ėjimas','ėjimai','ėjimų'):'s'}`);
   b.innerHTML=`<b>${g.daily?'Dienos iššūkis':g.event?'Durelės '+g.event:'Lygis '+level}</b>${parts.map(p=>`<span>${p}</span>`).join('')}`;
   b.classList.remove('show');void b.offsetWidth;b.classList.add('show');sfx('whoosh')}
 /* --- rodanti ranka: mokymas pirmuose lygiuose ir užuomina, kai ilgai nieko nedarai --- */
@@ -725,7 +785,8 @@ function itemHTML(c,s,k){
   else{inner=EM(c.t);
     if(c.hid){cls+=' hid';inner='?';extra=`<sub>${w.sk.hidden[0]}</sub>`}
     if(c.thr>g.m){cls+=' frz';extra+=`<em>${w.sk.frozen[0]}${c.thr-g.m}</em>`}
-    const p=g.ps[c.t];if(p&&!p.sp){const sec=Math.ceil(p.left/1000);extra+=`<b class="pt${sec<=10?' low':''}" data-t="${c.t}">${w.sk.perish[0]}${sec}</b>`}}
+    const p=g.ps[c.t];if(p&&!p.sp){const sec=Math.ceil(p.left/1000);extra+=`<b class="pt${sec<=10?' low':''}" data-t="${c.t}">${w.sk.perish[0]}${sec}</b>`}
+    if(g.orders&&!c.hid){if(g.reserved(c.t)){const o=g.orders.find(o=>o.ts.includes(c.t));extra+=`<b class="rv">${w.sk.who[o.who%w.sk.who.length]}</b>`;cls+=' rsv'}else if(g.wanted(c.t))cls+=' want'}}
   if(ANIM.adv.has(s))cls+=' adv';if(ANIM.drop&&ANIM.drop[0]===s&&ANIM.drop[1]===k)cls+=' drop';if(ANIM.thaw.has(s+'_'+k))cls+=' thaw';
   if(c.rev){cls+=' rev';delete c.rev}
   let sty='';if(ANIM.intro){cls+=' in';sty=` style="animation-delay:${Math.min(900,ANIM.n++*28)}ms"`}
@@ -746,12 +807,13 @@ function render(){
 function chalText(c){if(!c)return '';return {combo:`Padaryk kombo ×${c.n}`,first:`Pirmą išvalyk ${EM(c.t)}`,noboost:'Nenaudok pagalbų'}[c.type]}
 function buildStrip(){$('strip').innerHTML=`<div class="ch"><div id="chT"></div><div class="par" id="parT"></div></div><div class="pg" id="pg"><div class="pbar"><i id="pbarI"></i></div><span class="pstar" id="pstar">⭐</span></div><span id="coinp">🪙 <b id="coinv">${COINS}</b></span>`}
 function renderHUD(){const g=game;if(!g||!$('chT'))return;const rem=g.timeLimit*1000-g.el;
-  $('time').textContent=fmt(rem);document.body.classList.toggle('hurry',g.started&&g.status==='play'&&rem<=10000&&g.freeze<=0);$('tbox').className=g.freeze>0?'frz':rem<=15000&&g.started?'warn':'';$('lico').textContent=g.orders?'🧾':'📦';$('left').textContent=g.orders?g.ordersLeft():g.remaining();
+  if(g.moveMode){const ml=g.movesLeft();$('tbox').innerHTML=`👣 <b id="time">${ml}</b>`;$('tbox').className=ml<=5?'warn':'';document.body.classList.toggle('hurry',g.status==='play'&&ml<=3)}
+  else{$('tbox').innerHTML=`⏱️ <b id="time">${fmt(rem)}</b>`;document.body.classList.toggle('hurry',g.started&&g.status==='play'&&rem<=10000&&g.freeze<=0);$('tbox').className=g.freeze>0?'frz':rem<=15000&&g.started?'warn':''}$('lico').textContent=g.orders?'🧾':'📦';$('left').textContent=g.orders?g.ordersLeft():g.remaining();
   const ok=g.chalOk(),c=g.chal;let lost=false,pr='';
   if(c){if(c.type==='first'&&g.firstType!=null&&g.firstType!==c.t)lost=true;if(c.type==='noboost'&&g.used)lost=true;if(c.type==='combo')pr=g.maxCombo>=c.n?' ✓':` (${Math.min(g.maxCombo,c.n)}/${c.n})`;if(c.type==='first'&&g.firstType===c.t)pr=' ✓'}
   const tOk=g.el<=g.parTime*1000,mOk=g.moves<=g.parMoves,ce=$('chT');
   ce.className=c?(lost?'bad':(ok||pr===' ✓')?'ok':''):'';ce.innerHTML=c?`🎯 ${chalText(c)}${pr}`:(g.daily?'📅 Dienos iššūkis':g.orders?'🧾 Įvykdyk užsakymus':'🛒 Išrikiuok visas prekes');
-  $('parT').innerHTML=`<span class="${tOk?'':'bad'}">⏱️ ${fmt(Math.max(0,g.parTime*1000-g.el))}</span> · <span class="${mOk?'':'bad'}">👣 ${g.moves}/${g.parMoves}</span>`;
+  $('parT').innerHTML=g.moveMode?`<span class="${g.moves<=g.okMoves?'':'bad'}">👣 ${g.moves} ėj.</span> · ★ ≤${g.okMoves} · ★★ ≤${g.parMoves}`:`<span class="${tOk?'':'bad'}">⏱️ ${fmt(Math.max(0,g.parTime*1000-g.el))}</span> · <span class="${mOk?'':'bad'}">👣 ${g.moves}/${g.parMoves}</span>`;
   $('pbarI').style.width=(g.progress()*100)+'%';$('coinv').textContent=COINS;
   const ic=W().sk.perish[0];document.querySelectorAll('#board .pt').forEach(e=>{const p=g.ps[e.dataset.t];if(p){const sc=Math.ceil(p.left/1000);e.textContent=ic+sc;e.classList.toggle('low',sc<=10)}})}
 /* --- tempimas ir paspaudimai --- */
@@ -821,7 +883,12 @@ function afterMove(ev){
   if(ev.adv.length)setTimeout(()=>sfx('adv'),220);
   if(ev.thaw.length)setTimeout(()=>sfx('thaw'),250);
   if(ev.unlock.length){setTimeout(()=>{sfx('unlock');buzz([20,30,20])},300)}
+  if(g.orders&&ev.b!=null){const B=g.sh[ev.b];if(B&&B.cap===3&&isTriF(B.front)&&g.reserved(B.front[0].t))waitFx(ev.b,B.front[0].t)}
   idleHint();checkEnd()}
+function waitFx(i,t){const g=game,el=shelfEl(i);if(!el)return;const o=g.orders.find(o=>o.ts.includes(t)),w=W(),r=el.getBoundingClientRect();
+  const e=fxEl('rvb',`${w.sk.who[o.who%w.sk.who.length]} Palauksiu eilės!`);const x=r.left+r.width/2,y=r.top+6;
+  e.animate([{transform:`translate(${x}px,${y}px) translate(-50%,-50%) scale(.5)`,opacity:0},{transform:`translate(${x}px,${y-10}px) translate(-50%,-50%) scale(1.05)`,opacity:1,offset:.15},{transform:`translate(${x}px,${y-14}px) translate(-50%,-50%) scale(1)`,opacity:1,offset:.8},{transform:`translate(${x}px,${y-24}px) translate(-50%,-50%) scale(.95)`,opacity:0}],{duration:1700,easing:'ease-out'}).onfinish=()=>e.remove();
+  sfx('ping');buzz(15)}
 function fxEl(cls,html){const e=document.createElement('div');e.className=cls;if(html!=null)e.innerHTML=html;$('fx').appendChild(e);return e}
 /* trejetas: prekės pašoka, susilieja į vieną, blyksteli, o žvaigždutė nuskrenda į progreso juostą */
 function mergeFx(t,rs,ord){const ok=rs.filter(Boolean);if(!ok.length&&ord){ordLand(ord,t);return}if(!ok.length)return;const cols=['#fde047','#f472b6','#60a5fa','#4ade80','#fb923c','#c084fc'];
@@ -860,7 +927,7 @@ const ordOf=t=>game&&game.orders?game.orders.find(o=>o.ts.includes(t)):null;
 const ordDone=o=>o.ts.every(t=>game.ct.includes(t)&&!(o.pend&&o.pend.includes(t)));
 function renderOrders(){const g=game,e=$('orders');if(!g||!g.orders){e.className='';e.innerHTML='';return}
   const who=W().sk.who,open=g.orders.filter(o=>!ordDone(o)||o.anim);e.className='on';
-  const card=o=>{const i=g.orders.indexOf(o),nw=!ORDSEEN.has(i);return `<div class="ord${nw?' new':''}${o.anim?' done':''}" data-o="${i}"><span class="who">${who[o.who%who.length]}</span><span class="its">${o.ts.map(t=>`<i class="${g.ct.includes(t)&&!(o.pend&&o.pend.includes(t))?'ok':''}" data-t="${t}">${EM(t)}</i>`).join('')}</span>${o.anim?'<b class="bub">Ačiū!</b>':''}</div>`};
+  const card=o=>{const i=g.orders.indexOf(o),nw=!ORDSEEN.has(i);const act=!o.anim&&o===open.find(x=>!x.anim);return `<div class="ord${nw?' new':''}${o.anim?' done':''}${act?' act':' wait'}" data-o="${i}"><span class="who">${who[o.who%who.length]}</span><span class="its">${o.ts.map(t=>`<i class="${g.ct.includes(t)&&!(o.pend&&o.pend.includes(t))?'ok':''}" data-t="${t}">${EM(t)}</i>`).join('')}</span>${o.anim?'<b class="bub">Ačiū!</b>':''}</div>`};
   // rodom tiek pirkėjų, kiek telpa į ekrano plotį (iki 3)
   for(let n=Math.min(3,open.length);n>=1;n--){const vis=open.slice(0,n),q=open.length-n;e.innerHTML=vis.map(card).join('')+(q>0?`<span class="oq">+${q}</span>`:'');
     const w=[...e.children].reduce((a,c)=>a+c.offsetWidth+6,0);if(w<=e.clientWidth-10||n===1){vis.forEach(o=>ORDSEEN.add(g.orders.indexOf(o)));break}}}
@@ -894,6 +961,7 @@ function newChip(b,t){const e=document.createElement('div');e.className='chip';e
   e.animate([{transform:'translate(-50%,-30px) scale(.6)',opacity:0},{transform:'translate(-50%,0) scale(1.06)',opacity:1,offset:.12},{transform:'translate(-50%,0) scale(1)',opacity:1,offset:.85},{transform:'translate(-50%,-20px)',opacity:0}],{duration:1900,easing:'ease-out'}).onfinish=()=>e.remove()}
 function checkEnd(){const g=game;if(g.status!=='play')return;
   if(g.won()){g.status='win';whenQuiet(gen,winGame);return}
+  if(g.moveMode&&g.movesLeft()<=0){g.status='lose';g.why='moves';const g0=gen;setTimeout(()=>{if(g0===gen)loseCard()},600);return}
   if(!g.hasMove()){g.status='lose';g.why='stuck';const g0=gen;setTimeout(()=>{if(g0===gen)loseCard()},500)}}
 function whenQuiet(g0,fn){const t=()=>{if(g0!==gen)return;if($('fx').children.length)return setTimeout(t,150);fn()};setTimeout(t,350)}
 /* --- gyvas fonas, prekių judesiai, konfeti --- */
@@ -914,6 +982,7 @@ let lastT=performance.now(),tickS=-1;
 setInterval(()=>{const n=performance.now(),dt=Math.min(500,n-lastT);lastT=n;const g=game;
   if(!g||g.status!=='play'||!g.started||PZ.on||HOME.on||document.hidden||$('overlay').classList.contains('show')||$('menu').classList.contains('show'))return;
   if(g.freeze>0){g.freeze-=dt;if(g.freeze<=0){g.freeze=0;renderHUD()}}else{g.el+=dt;const sp=g.tickPerish(dt);if(sp.length)onSpoil(sp)}
+  if(g.moveMode)return;   // užsakymų lygiuose – ėjimai, ne laikas
   const rem=g.timeLimit*1000-g.el,s=Math.ceil(rem/1000);if(s<=10&&s>0&&s!==tickS){tickS=s;sfx('tick')}
   if(rem<=0){g.el=g.timeLimit*1000;g.status='lose';g.why='time';renderHUD();loseCard()}},100);
 setInterval(()=>{if(game&&game.status==='play')renderHUD()},250);
@@ -930,7 +999,7 @@ const BOOST=[
   {id:'magnet',ic:'🧲',name:'Magnetas',short:'Magnetas',cost:30,txt:'Ištraukia 3 vienodas prekes – tos rūšies, kurios matosi daugiausia.'},
   {id:'shelf',ic:'➕',name:'Nauja lentyna',short:'Lentyna',cost:35,txt:'Prideda tuščią lentyną (iki 2 per lygį).'}];
 function boostOk(id){const g=game;if(!g||g.status!=='play'||busy)return false;
-  if(id==='undo')return g.hist.length>0;if(id==='shelf')return g.sh.filter(s=>s.bonus).length<2;if(id==='freeze')return g.freeze<=0;return true}
+  if(id==='undo')return g.hist.length>0;if(id==='shelf')return g.sh.filter(s=>s.bonus).length<2;if(id==='freeze')return g.freeze<=0&&!g.moveMode;return true}
 const boostCan=b=>boostOk(b.id)&&(testMode||(INV[b.id]||0)>0||COINS>=b.cost);
 function boostBadge(b){const own=INV[b.id]||0;return own?`<small class="own">×${own}</small>`:`<small>${testMode?'0':b.cost+'🪙'}</small>`}
 function renderBar(){$('bar').innerHTML=BOOST.map(b=>`<button class="bst" data-b="${b.id}" ${boostCan(b)?'':'disabled'}><i class="c">${b.ic}${boostBadge(b)}</i><span>${b.short}</span></button>`).join('');
@@ -962,7 +1031,7 @@ function hintItems(){const g=game,w=W(),o=[],on=new Set(g.mech.on);
   if(g.mech.hidden)o.push(['hidden',w.sk.hidden[0],w.sk.hidden[1],'Ką slepia „?“, sužinosi tik išvalęs kitą trejetą. Kol nežinai – ją vis tiek galima perkelti.']);
   if(g.mech.dark)o.push(['dark',w.sk.dark[0],w.sk.dark[1],'Kitame sluoksnyje matyti tik prekių siluetai – teks įsiminti ar spėti.']);
   if(g.sh.some(s=>s.cap===2))o.push(['small',w.sk.small[0],w.sk.small[1],'Čia telpa tik 2 prekės – trejeto nesudėsi, bet tinka laikinai padėti prekę.']);
-  if(g.orders)o.push(['orders',w.sk.orders[0],w.sk.orders[1],'Viršuje laukia užsakymai. Išvalyk užsakytų prekių trejetus – kai visi užsakymai įvykdyti, lygis įveiktas, net jei lentynose dar liko prekių. Už kiekvieną užsakymą – 🪙.']);
+  if(g.orders)o.push(['orders2',w.sk.orders[0],w.sk.orders[1]+': pirkėjų eilė','Aptarnaujamas tik pirmas eilėje stovintis pirkėjas – jo prekės šviečia žaliai. Būsimų pirkėjų prekės pažymėtos jų veideliu ir neišsivalo, net sudėjus tris kartu, kol neateis jų eilė – teks jas kur nors laikyti. Laikmačio nėra, bet ėjimų skaičius ribotas, o už likusius ėjimus gauni arbatpinigių 🪙.']);
   if(g.mech.perish)o.push(['perish_'+w.name,w.sk.perish[0],w.sk.perish[1],`Prekės su laikmačiu turi būti išvalytos, kol jis nesibaigė. Laikmatis eina tik tada, kai prekė matosi priekyje. Nespėsi – visos trys tokios prekės bus sugadintos (${w.sk.junk}) ir užims vietą. Bakstelėk sugadintą prekę, kad ją išmestum.`]);
   if(g.boss&&level>=10)o.push(['bosshard','🔥','Bosas: galvok į priekį','Daugiau prekių ir mažiau laiko. Stenkis visada palikti bent vieną laisvą vietą. Suklydus padės ↩️ ir kitos pagalbos už 🪙.']);
   if(g.chal)o.push(['chal','🎯','Iššūkis: '+chalText(g.chal),'Įvykdęs gausi ★. Iš viso 4 ★: už įveiktą lygį, už laiką, už ėjimų skaičių ir už šią užduotį.'+(g.chal.type==='combo'?' Kombo – trejetai iš eilės, kai tarp jų praeina ne daugiau 6 s.':'')]);
@@ -979,17 +1048,17 @@ function winGame(){const g=game,g0=gen;handHide();$('combo').classList.remove('o
   if(g.daily)return dailyWin(g0);
   if(g.event)return advWin(g0);
   const TM=tmOn();if(!TM){unlocked=Math.max(unlocked,level+1);store.set('prekes.unlocked',unlocked)}
-  const st=g.stars(),cOk=g.chalOk(),prevSt=best[level]||0,coin=addCoins(levelReward(level,st,prevSt));if(!TM){best[level]=Math.max(prevSt,st);store.set('prekes.stars',best)}
+  const st=g.stars(),cOk=g.chalOk(),prevSt=best[level]||0,tip=g.moveMode&&!TM?Math.min(15,Math.max(0,g.movesLeft())):0,coin=addCoins(levelReward(level,st,prevSt)+tip);if(!TM){best[level]=Math.max(prevSt,st);store.set('prekes.stars',best)}
   if(!TM){STREAK++;store.set('prekes.streak',STREAK);achSet('wstreak',STREAK)}
   const newLv=!TM&&!prevSt;if(newLv){CHEST=Math.min(5,CHEST+1);store.set('prekes.chest',CHEST)}
-  if(!g.used)achAdd('nohelp',1);if(g.el<=g.parTime*500)achSet('fast',1);achCheck();
+  if(!g.used)achAdd('nohelp',1);if(!g.moveMode&&g.el<=g.parTime*500)achSet('fast',1);achCheck();
   sfx('win');buzz([40,60,40,60,120]);confetti();for(let i=0;i<st;i++)setTimeout(()=>{sfx('star',i);buzz(15)},420+i*260);
   const full=newLv&&CHEST>=5,praise=['','Įveikta!','Gerai!','Puiku!','Tobula!'][st];
   showCard(`<div class="ribbon gold">${praise}</div>
     <div class="bigstars">${[0,1,2,3].map(i=>`<i class="${i<st?'on':''}" style="animation-delay:${.3+i*.26}s">★</i>`).join('')}</div>
-    <div class="sbrk"><span class="on">★ Lygis ${level} įveiktas</span><span class="${g.el<=g.parTime*1000?'on':''}">★ ⏱️ ${fmt(g.el)} (≤ ${fmt(g.parTime*1000)})</span><span class="${g.moves<=g.parMoves?'on':''}">★ 👣 ${g.moves} ėj. (≤ ${g.parMoves})</span><span class="${cOk?'on':''}">★ ${g.chal?chalText(g.chal):'Užduoties nėra'}</span></div>
+    <div class="sbrk"><span class="on">★ Lygis ${level} įveiktas</span>${g.moveMode?`<span class="${g.moves<=g.okMoves?'on':''}">★ Taupiai: ≤ ${g.okMoves} ėj.</span><span class="${g.moves<=g.parMoves?'on':''}">★ Labai taupiai: ≤ ${g.parMoves} ėj.</span>`:`<span class="${g.el<=g.parTime*1000?'on':''}">★ ⏱️ ${fmt(g.el)} (≤ ${fmt(g.parTime*1000)})</span><span class="${g.moves<=g.parMoves?'on':''}">★ 👣 ${g.moves} ėj. (≤ ${g.parMoves})</span>`}<span class="${cOk?'on':''}">★ ${g.chal?chalText(g.chal):'Užduoties nėra'}</span></div>
     ${level>=MAXL?'<p>🏆 Įveikei visus '+MAXL+' lygių!</p>':qOf(level)===STAGE?'<p>🎉 Etapas įveiktas! Toliau – naujos prekės, sunkumas prasideda iš naujo</p>':''}
-    ${TM?'<p class="coin">🧪 Testo režimas – apdovanojimai neįskaitomi</p>':`<div class="rew"><span>🪙 +<b id="wc">0</b></span>${STREAK>1?`<span class="st">🔥 Serija ${STREAK}</span>`:''}</div>`}
+    ${TM?'<p class="coin">🧪 Testo režimas – apdovanojimai neįskaitomi</p>':`<div class="rew"><span>🪙 +<b id="wc">0</b></span>${tip?`<span class="st">💁 Arbatpinigiai +${tip}</span>`:''}${STREAK>1?`<span class="st">🔥 Serija ${STREAK}</span>`:''}</div>`}
     ${newLv?`<div class="chest${full?' full':''}"><b>🎁</b><div class="cb"><i id="chb" style="width:${(CHEST-1)/5*100}%"></i></div><span>${CHEST}/5</span></div>`:''}
     ${full?'<button class="cont big pulse" id="och">🎁 Atidaryti skrynią!</button>':`<button class="primary big pulse" id="nx">${playable(level+1)?'Kitas lygis ▶':'🗺️ Į žemėlapį'}</button>`}
     <div class="pm2"><button id="rp">↻ Kartoti</button><button id="mn">🗺️ Žemėlapis</button></div>`);
@@ -1008,16 +1077,16 @@ function openChest(next){CHEST=0;store.set('prekes.chest',0);
     $('chp').textContent='Gavai:';$('lt').innerHTML=[`<span><b>🪙</b>+${coins}</span>`,...Object.keys(got).map(id=>{const b=BOOST.find(x=>x.id===id);return `<span><b>${b.ic}</b>${b.short} ×${got[id]}</span>`})].map((h,i)=>h.replace('<span>',`<span style="animation-delay:${.15+i*.18}s">`)).join('');
     $('chn').style.visibility='visible'};
   $('chx').onclick=open;setTimeout(open,1900);$('chn').onclick=next}
-function loseCard(){const g=game,time=g.why==='time';sfx('lose');buzz(250);handHide();$('combo').classList.remove('on');
-  const pct=Math.round(g.cleared/g.N*100),own=!time&&(INV.shelf||0)>0,ownU=(INV.undo||0)>0;
-  const opt=time?{txt:'⏱️ +45 s',cost:25}:{txt:'➕ Nauja lentyna',cost:30},price=testMode?'nemokamai':own?`turi ×${INV.shelf}`:opt.cost+' 🪙',can=testMode||own||COINS>=opt.cost;
-  showCard(`<div class="ribbon lose">${time?'Laikas baigėsi!':'Nebėra ėjimų!'}</div><div class="newm">${time?'⏰':'🧱'}</div>
-    <p><b>Beveik pavyko!</b> Jau išrikiavai:</p><div class="pct"><i style="width:${pct}%"></i><b>${pct} %</b></div>
+function loseCard(){const g=game,time=g.why==='time',mvs=g.why==='moves';sfx('lose');buzz(250);handHide();$('combo').classList.remove('on');
+  const pct=Math.round(g.progress()*100),own=!time&&!mvs&&(INV.shelf||0)>0,ownU=(INV.undo||0)>0;
+  const opt=mvs?{txt:'👣 +5 ėjimai',cost:20}:time?{txt:'⏱️ +45 s',cost:25}:{txt:'➕ Nauja lentyna',cost:30},price=testMode?'nemokamai':own?`turi ×${INV.shelf}`:opt.cost+' 🪙',can=testMode||own||COINS>=opt.cost;
+  showCard(`<div class="ribbon lose">${mvs?'Baigėsi ėjimai!':time?'Laikas baigėsi!':'Nebėra ėjimų!'}</div><div class="newm">${mvs?'👣':time?'⏰':'🧱'}</div>
+    <p><b>Beveik pavyko!</b> ${g.orders?'Užsakymų įvykdyta':'Jau išrikiavai'}:</p><div class="pct"><i style="width:${pct}%"></i><b>${pct} %</b></div>
     ${STREAK>0&&!g.special?`<p class="warnS">Pasiduosi – prarasi seriją 🔥${STREAK}</p>`:''}
     <button class="cont big pulse" id="lc" ${can?'':'disabled'}>${opt.txt} · ${price}</button>
-    ${!time&&g.hist.length?`<button id="lu" ${testMode||ownU||COINS>=5?'':'disabled'}>↩️ Atšaukti ėjimą · ${testMode?'nemokamai':ownU?'turi ×'+INV.undo:'5 🪙'}</button>`:''}
+    ${!time&&!mvs&&g.hist.length?`<button id="lu" ${testMode||ownU||COINS>=5?'':'disabled'}>↩️ Atšaukti ėjimą · ${testMode?'nemokamai':ownU?'turi ×'+INV.undo:'5 🪙'}</button>`:''}
     <div class="pm2"><button id="lr">↻ Iš naujo</button><button id="lm">🗺️ Žemėlapis</button></div><p class="coin">Turi 🪙 ${COINS}</p>`);
-  $('lc').onclick=()=>{if(!testMode){if(own){INV.shelf--;store.set('prekes.inv',INV)}else addCoins(-opt.cost)}g.used++;g.status='play';closeCard();if(time)g.extraT+=45;else{g.addShelf();layoutBoard();render()}renderHUD();renderBar();toast(time?'⏱️ +45 s':'➕ Nauja lentyna','Tęsiam!')};
+  $('lc').onclick=()=>{if(!testMode){if(own){INV.shelf--;store.set('prekes.inv',INV)}else addCoins(-opt.cost)}g.used++;g.status='play';closeCard();if(mvs)g.extraMv+=5;else if(time)g.extraT+=45;else{g.addShelf();layoutBoard();render()}renderHUD();renderBar();toast(mvs?'👣 +5 ėjimai':time?'⏱️ +45 s':'➕ Nauja lentyna','Tęsiam!')};
   if($('lu'))$('lu').onclick=()=>{if(!testMode){if(ownU){INV.undo--;store.set('prekes.inv',INV)}else addCoins(-5)}g.used++;g.restore(g.hist.pop());g.status='play';closeCard();render();renderHUD();renderBar()};
   $('lr').onclick=()=>{if(!g.special)streakBreak();newGame(level,false,modeOf(g))};
   if(g.event){$('lm').textContent='🎄 Kalendorius';$('lm').onclick=()=>openAdvent()}else $('lm').onclick=()=>{if(!g.special)streakBreak();DAILY.on=false;openMenu()}}
@@ -1133,7 +1202,7 @@ function sched(){
 /* ===================== PAUZĖ IR NUSTATYMAI ===================== */
 var PZ={on:false};
 function openPause(){if(!game)return;PZ.on=true;handHide();$('menu').classList.remove('show');const g=game;
-  showCard(`<div class="ribbon blue">Pauzė</div><p>Lygis ${level} · liko ${fmt(g.timeLimit*1000-g.el)} · ${g.moves} ėj. · 🪙 ${COINS}</p><div class="pm">
+  showCard(`<div class="ribbon blue">Pauzė</div><p>Lygis ${level} · ${g.moveMode?'liko '+g.movesLeft()+' ėj.':'liko '+fmt(g.timeLimit*1000-g.el)+' · '+g.moves+' ėj.'} · 🪙 ${COINS}</p><div class="pm">
     <button class="primary big" id="pr">▶ Tęsti</button>
     <div class="pm2"><button id="pa">↻ Iš naujo</button><button id="pl">🗺️ Žemėlapis</button></div>
     <div class="pm2"><button id="ph">💡 Užuominos</button><button id="pb">🧰 Pagalbos</button></div>
