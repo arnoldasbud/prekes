@@ -318,6 +318,10 @@ body.w4{background:radial-gradient(130% 85% at 50% 0%,#3b5bdb 0,#1e3a8a 30%,#172
 .advt b{font-size:34px}.advt span{display:flex;flex-direction:column}.advt small{font-size:12px;font-weight:600;color:#fde68a}
 .advt.hot{animation:btnp 1.2s ease-in-out infinite}
 
+/* ===== tempimas: kur nukris prekė ===== */
+.shelf.tgt{box-shadow:0 0 0 3px #4ade80,0 0 18px rgba(74,222,128,.9)!important;z-index:3}
+.shelf.tgtno{box-shadow:0 0 0 3px #f87171,0 0 12px rgba(248,113,113,.7)!important}
+body{-webkit-touch-callout:none}
 /* ===== pirkėjų eilė ===== */
 .rvb{position:absolute;left:0;top:0;white-space:nowrap;background:#fff;color:#3730a3;font-weight:700;font-size:13px;padding:4px 10px;border-radius:14px;border:2px solid #a5b4fc;box-shadow:0 4px 10px rgba(0,0,0,.25)}
 .it .rv{position:absolute;left:-6px;top:-6px;z-index:3;font-style:normal;font-size:calc(var(--sz)*.3);line-height:1;padding:1px;border-radius:50%;background:#fff;border:2px solid #a5b4fc;text-shadow:none;box-shadow:0 2px 0 rgba(0,0,0,.25)}
@@ -686,7 +690,7 @@ class Game{
 </script>
 <script>
 /* ===================== VALDYMAS ===================== */
-const VERSION='1.6.0';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
+const VERSION='1.6.1';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let unlocked=store.get('prekes.unlocked',1),level=Math.min(unlocked,MAXL),best=store.get('prekes.stars',{});
@@ -709,7 +713,7 @@ function newGame(L,showWorld,mode){
   if(game&&game.status==='play'&&game.moves>0&&!game.special)streakBreak();   // nutrauktas lygis nutraukia seriją
   PZ.on=false;if(L<1)L=1;if(!mode){while(L>1&&!playable(L))L--}
   gen++;level=L;if(!mode)store.set('prekes.level',level);$('menu').classList.remove('show');closeCard();handHide();
-  game=new Game(level);game.daily=mode==='daily';game.event=mode==='event'?level-EVENT0:0;game.special=game.daily||!!game.event;LAY.ph=0;LAY.pe2=0;sel=null;hintMv=null;busy=false;$('fx').innerHTML='';
+  game=new Game(level);game.daily=mode==='daily';game.event=mode==='event'?level-EVENT0:0;game.special=game.daily||!!game.event;LAY.ph=0;LAY.pe2=0;sel=null;hintMv=null;busy=false;ANIM.fly=null;$('fx').innerHTML='';
   $('combo').classList.remove('on');$('banner').classList.remove('show');
   if(!game.special){game.sbonus=streakBonus();if(game.moveMode){game.sbonus=Math.round(game.sbonus/10);game.extraMv+=game.sbonus}else game.extraT+=game.sbonus}   // užsakymų lygiuose serija duoda ėjimų
   const w=worldOf(level);document.body.className=game.event?'w4':'w'+(cyc(level)%4);
@@ -759,10 +763,10 @@ const LAY={sz:50,pc:0,Lc:1,pe:0,Le:1,ph:0,pe2:0,cols:3,gx:6,gy:6};
 function layoutBoard(){
   const b=$('board'),g=game,n=g.sh.filter(s=>!s.mv).length,kc=g.sh.filter(s=>s.mv==='conv').length,ke=g.sh.filter(s=>s.mv==='elev').length;
   const bw=b.clientWidth-12,bh=b.clientHeight-8,gx=6,gy=6,CP=8;let bestL=null;
-  for(let sz=86;sz>=26&&!bestL;sz--){const shW=3*sz+12,shH=1.46*sz+12;
-    for(const c of [1,2,3,4]){if(c===1&&n>3)continue;const rows=Math.ceil(Math.max(n,1)/c);
-      const w=c*shW+(c-1)*gx+2*CP+(ke?shW+18:0),h=rows*shH+(rows-1)*gy+2*CP+12+(kc?shH+22:0);
-      if(w<=bw&&h<=bh&&(!ke||bh-(kc?shH+22:0)>=shH*1.6)){bestL={sz,c};break}}}
+  const fits=(sz,c)=>{const shW=3*sz+12,shH=1.46*sz+12,rows=Math.ceil(Math.max(n,1)/c);
+    const w=c*shW+(c-1)*gx+2*CP+(ke?shW+18:0),h=rows*shH+(rows-1)*gy+2*CP+12+(kc?shH+22:0);return w<=bw&&h<=bh&&(!ke||bh-(kc?shH+22:0)>=shH*1.6)};
+  // kiekvienam stulpelių skaičiui – didžiausios telpančios prekės; renkamės didžiausias (kuo didesnės, tuo lengviau paimti pirštu)
+  for(const c of [1,2,3,4]){let sz=86;while(sz>=26&&!fits(sz,c))sz--;if(sz<26)continue;const score=c===1&&n>3?sz/1.08:sz;if(!bestL||score>bestL.score)bestL={sz,c,score}}
   if(!bestL)bestL={sz:26,c:3};const sz=bestL.sz,shW=3*sz+12,shH=1.46*sz+12;
   b.style.setProperty('--sz',sz+'px');LAY.cols=bestL.c;LAY.gx=gx;LAY.gy=gy;
   const ce=$('conv'),ee=$('elev');ce.style.display=kc?'block':'none';ee.style.display=ke?'block':'none';
@@ -772,8 +776,8 @@ function layoutBoard(){
 window.addEventListener('resize',()=>{if(game){layoutBoard();render()}});
 const md=(a,m)=>((a%m)+m)%m;
 let rafT=performance.now();
-function moveBands(t){const dt=Math.min(100,t-rafT);rafT=t;const g=game;
-  if(g&&g.status==='play'&&!PZ.on&&!HOME.on&&!$('overlay').classList.contains('show')&&!$('menu').classList.contains('show')){LAY.ph+=g.mech.convSpd*dt/1000;LAY.pe2+=g.mech.elevSpd*dt/1000}
+function moveBands(t){const dt=Math.min(100,t-rafT);rafT=t;const g=game;if(drag&&drag.moved&&g&&(g.mech.conv||g.mech.elev))markTgt(drag);
+  if(g&&g.status==='play'&&!PZ.on&&!HOME.on&&!$('overlay').classList.contains('show')&&!$('menu').classList.contains('show')){const sl=(drag&&drag.moved)||sel?.35:1;LAY.ph+=g.mech.convSpd*sl*dt/1000;LAY.pe2+=g.mech.elevSpd*sl*dt/1000}   // kol prekė rankoje – juostos sulėtėja, kad būtų lengviau pataikyti
   if(g){const ce=$('conv'),ee=$('elev');
     if(ce.style.display!=='none'){ce.querySelectorAll('.shelf').forEach((e,j)=>{e.style.transform=`translate(${md(j*LAY.pc+LAY.ph,LAY.Lc)-LAY.pc+6}px,4px)`});ce.style.backgroundPositionX=LAY.ph+'px'}
     if(ee.style.display!=='none'){ee.querySelectorAll('.shelf').forEach((e,j)=>{e.style.transform=`translate(2px,${md(j*LAY.pe-LAY.pe2,LAY.Le)-LAY.pe}px)`});ee.style.backgroundPositionY=(-LAY.pe2)+'px'}}
@@ -820,37 +824,59 @@ function renderHUD(){const g=game;if(!g||!$('chT'))return;const rem=g.timeLimit*
 let drag=null;
 function shelfEl(i){return $('board').querySelector(`.shelf[data-s="${i}"]`)}
 function slotRect(i,k){const e=shelfEl(i);const s=e&&e.querySelector(`.slot[data-k="${k}"]`);return s?s.getBoundingClientRect():null}
-function nearestShelf(x,y){let bi=-1,bd=1e9;$('board').querySelectorAll('.shelf').forEach(e=>{const band=e.closest('#conv,#elev');if(band){const br=band.getBoundingClientRect();if(x<br.left||x>br.right||y<br.top||y>br.bottom)return}const r=e.getBoundingClientRect(),dx=Math.max(r.left-x,0,x-r.right),dy=Math.max(r.top-y,0,y-r.bottom),d=dx*dx+dy*dy;if(d<bd){bd=d;bi=+e.dataset.s}});return bd<=30*30?bi:-1}
+const touchR=()=>Math.max(24,LAY.sz*.6);   // pirštui – zona aplink prekę ar lentyną, kuri dar „pagauna“
+function nearestShelf(x,y,R){R=R||touchR();let bi=-1,bd=1e9;$('board').querySelectorAll('.shelf').forEach(e=>{const band=e.closest('#conv,#elev');if(band){const br=band.getBoundingClientRect();if(x<br.left||x>br.right||y<br.top||y>br.bottom)return}const r=e.getBoundingClientRect(),dx=Math.max(r.left-x,0,x-r.right),dy=Math.max(r.top-y,0,y-r.bottom),d=dx*dx+dy*dy;if(d<bd){bd=d;bi=+e.dataset.s}});return bd<=R*R?bi:-1}
+// pirštas truputį prašovė – artimiausia paimama prekė (ne užrakintoje lentynoje)
+function itemNear(x,y){const R=touchR();let best=null,bd=R*R;
+  $('board').querySelectorAll('.it').forEach(e=>{if(e.classList.contains('lift')||(e.dataset.mv!=='1'&&e.dataset.junk!=='1'))return;const band=e.closest('#conv,#elev');if(band){const br=band.getBoundingClientRect();if(x<br.left||x>br.right||y<br.top||y>br.bottom)return}
+    const r=e.getBoundingClientRect();if(!r.width)return;const dx=Math.max(r.left-x,0,x-r.right),dy=Math.max(r.top-y,0,y-r.bottom),d=dx*dx+dy*dy;if(d<bd){bd=d;best=e}});return best}
 function slotAt(i,x){const e=shelfEl(i);if(!e)return null;let bk=null,bd=1e9;e.querySelectorAll('.slot').forEach(s=>{const r=s.getBoundingClientRect(),d=Math.abs((r.left+r.right)/2-x);if(!s.children.length&&d<bd){bd=d;bk=+s.dataset.k}});return bk}
 function nope(i,k){const e=k!=null?shelfEl(i)&&shelfEl(i).querySelector(`.it[data-k="${k}"]`):shelfEl(i);if(e){e.classList.remove('nope');void e.offsetWidth;e.classList.add('nope')}sfx('locked');buzz([12,40,12])}
 function explainBlocked(i,k){const g=game,s=g.sh[i],c=k!=null?s.front[k]:null,w=W();
   if(!g.unlocked(i))toast(w.sk.lock[0]+' '+w.sk.lock[1],`Atsirakins išvalius dar ${s.lock-g.m} trejet${s.lock-g.m===1?'ą':'us'}`);
   else if(c&&c.thr>g.m)toast(w.sk.frozen[0]+' '+w.sk.frozen[1],`Pajudinsi išvalius dar ${c.thr-g.m} trejet${c.thr-g.m===1?'ą':'us'}`)}
+// kai žaidžiama greitai: naujas paspaudimas iškart užbaigia ankstesnės prekės skrydį, kad nepradingtų
+function skipFly(){const f=ANIM.fly;if(!f)return false;ANIM.fly=null;f.anim.cancel();f.done();return !busy}
+// kur nukris tempiama prekė: pirmiausia ten, kur matoma pati prekė (virš piršto), paskui – po pirštu
+function dropTarget(d,x,y){const g=game,pts=d.lift?[[x,y-d.lift],[x,y]]:[[x,y]];let first=-1;
+  for(const [px,py] of pts){const b=nearestShelf(px,py);if(b<0||b===d.s)continue;if(first<0)first=b;if(g.unlocked(b)&&g.canDrop(b))return b}
+  return first>=0?first:nearestShelf(x,y)}
+function markTgt(d){const b=d.moved?dropTarget(d,d.x,d.y):-1;if(b===d.tb)return;const o=d.tb>=0&&shelfEl(d.tb);if(o)o.classList.remove('tgt','tgtno');d.tb=b;
+  const e=b>=0&&b!==d.s&&shelfEl(b);if(e)e.classList.add(game.unlocked(b)&&game.canDrop(b)?'tgt':'tgtno')}
 $('board').addEventListener('pointerdown',e=>{
-  if(!game||game.status!=='play'||busy||drag)return;auInit();handHide();
-  const it=e.target.closest('.it'),she=e.target.closest('.shelf'),lk=e.target.closest('.lockov');
+  if(!game||game.status!=='play'||drag)return;auInit();handHide();
+  if(busy&&!skipFly())return;if(game.status!=='play')return;
+  const x=e.clientX,y=e.clientY,tg=document.elementFromPoint(x,y)||e.target,cl=q=>tg.closest?tg.closest(q):null;
+  let it=cl('.it');const she=cl('.shelf'),lk=cl('.lockov');
   if(lk&&she&&!lk.classList.contains('gone')&&!sel){const s=+she.dataset.s;nope(s);explainBlocked(s);return}   // užrakinta lentyna – parodom, kiek liko
+  if(!it&&!(sel&&she))it=itemNear(x,y);
   if(it){const s=+it.dataset.s,k=+it.dataset.k;
     if(it.dataset.junk==='1'){sel=null;throwJunk(s,k);return}
     if(it.dataset.mv!=='1'){if(sel&&s!==sel.s)return tryMove(sel.s,sel.k,s,null);nope(s,k);explainBlocked(s,k);return}
-    drag={s,k,x0:e.clientX,y0:e.clientY,el:it,moved:false,id:e.pointerId};e.preventDefault();return}
-  if(she&&sel){const b=+she.dataset.s;if(b===sel.s){sel=null;render();return}const sl=e.target.closest('.slot');tryMove(sel.s,sel.k,b,sl&&!sl.children.length?+sl.dataset.k:null);return}
-  if(sel){sel=null;render()}
+    drag={s,k,x0:x,y0:y,x,y,el:it,moved:false,id:e.pointerId,touch:e.pointerType!=='mouse',tb:-1};e.preventDefault();return}
+  if(sel){const b=she?+she.dataset.s:nearestShelf(x,y);
+    if(b>=0){if(b===sel.s){sel=null;render();return}const sl=she&&cl('.slot');tryMove(sel.s,sel.k,b,sl&&!sl.children.length?+sl.dataset.k:null);return}
+    sel=null;render()}
 });
-window.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x0,dy=e.clientY-drag.y0;
-  if(!drag.moved){if(dx*dx+dy*dy<64)return;drag.moved=true;sel=null;const r=drag.el.getBoundingClientRect(),f=document.createElement('div');f.className='fly';
-    f.style.width=r.width+'px';f.style.height=r.height+'px';f.style.fontSize=getComputedStyle(drag.el).fontSize;f.innerHTML=drag.el.innerHTML;drag.ox=r.left-drag.x0;drag.oy=r.top-drag.y0-14;
+window.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x0,dy=e.clientY-drag.y0;drag.x=e.clientX;drag.y=e.clientY;
+  if(!drag.moved){if(dx*dx+dy*dy<(drag.touch?100:49))return;drag.moved=true;sel=null;const r=drag.el.getBoundingClientRect(),f=document.createElement('div');f.className='fly';
+    f.style.width=r.width+'px';f.style.height=r.height+'px';f.style.fontSize=getComputedStyle(drag.el).fontSize;f.innerHTML=drag.el.innerHTML;
+    if(drag.touch){drag.sc=Math.max(1.2,Math.min(1.7,56/r.width));drag.lift=Math.round(Math.max(30,r.height*drag.sc*.75));drag.ox=-r.width/2;drag.oy=-r.height/2-drag.lift}   // pirštu – prekė padidinta ir virš piršto, kad matytųsi
+    else{drag.sc=1.15;drag.lift=0;drag.ox=r.left-drag.x0;drag.oy=r.top-drag.y0-14}
     $('fx').appendChild(f);drag.f=f;drag.el.classList.add('lift');drag.el.classList.remove('sel');sfx('pick');buzz(8)}
-  drag.f.style.transform=`translate(${e.clientX+drag.ox}px,${e.clientY+drag.oy}px) scale(1.15)`});
-function endDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=null;const nr=ANIM.needR;ANIM.needR=false;
+  drag.f.style.transform=`translate(${e.clientX+drag.ox}px,${e.clientY+drag.oy}px) scale(${drag.sc})`;markTgt(drag)});
+function endDrag(e){if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=null;const nr=ANIM.needR;ANIM.needR=false;const o=d.tb>=0&&shelfEl(d.tb);if(o)o.classList.remove('tgt','tgtno');
+  const back=()=>{const r=d.el.getBoundingClientRect();d.f.animate([{transform:d.f.style.transform},{transform:`translate(${r.left}px,${r.top}px)`}],{duration:160,easing:'ease-out'}).onfinish=()=>{d.f.remove();d.el.classList.remove('lift');if(nr)render()}};
+  if(e.type==='pointercancel'){if(d.moved)back();else if(nr)render();return}   // naršyklė perėmė gestą – nieko nedarom
   if(!d.moved){ // paspaudimas
     if(sel&&sel.s===d.s&&sel.k===d.k){sel=null;render();return}
     if(sel&&sel.s!==d.s){tryMove(sel.s,sel.k,d.s,null);return}
     sel={s:d.s,k:d.k};sfx('pick');buzz(8);render();idleHint();return}
-  const b=nearestShelf(e.clientX,e.clientY),fr=d.f.getBoundingClientRect();
+  const b=dropTarget(d,e.clientX,e.clientY),fr=d.f.getBoundingClientRect();
   if(b>=0&&b!==d.s&&game.canDrop(b)){d.f.remove();tryMove(d.s,d.k,b,slotAt(b,e.clientX),fr);return}
   if(b>=0&&b!==d.s){nope(b);explainBlocked(b)}
-  const r=d.el.getBoundingClientRect();d.f.animate([{transform:d.f.style.transform},{transform:`translate(${r.left}px,${r.top}px)`}],{duration:160,easing:'ease-out'}).onfinish=()=>{d.f.remove();d.el.classList.remove('lift');if(nr)render()}}
+  else if(Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<Math.max(36,LAY.sz*.9)){d.f.remove();d.el.classList.remove('lift');sel={s:d.s,k:d.k};sfx('pick');render();return}   // vos pajudintas pirštas – tai paspaudimas: prekė pasirinkta
+  back()}
 window.addEventListener('pointerup',endDrag);window.addEventListener('pointercancel',endDrag);
 function tryMove(a,ia,b,ib,fromRect){
   const g=game;sel=null;
@@ -864,7 +890,8 @@ function tryMove(a,ia,b,ib,fromRect){
   const fin=()=>{busy=false;afterMove(ev)};
   if(r0&&r1){const f=document.createElement('div');f.className='fly';f.style.width=r0.width+'px';f.style.height=r0.height+'px';f.style.fontSize=fs;f.innerHTML=html;$('fx').appendChild(f);
     const tx=r1.left+(r1.width-r0.width)/2,ty=r1.bottom-r0.height;
-    f.animate([{transform:`translate(${r0.left}px,${r0.top}px) scale(${fromRect?1.15:1})`},{transform:`translate(${tx}px,${ty}px) scale(1)`}],{duration:fromRect?110:170,easing:'ease-out'}).onfinish=()=>{f.remove();fin()}}
+    const an=f.animate([{transform:`translate(${r0.left}px,${r0.top}px) scale(${fromRect?1.15:1})`},{transform:`translate(${tx}px,${ty}px) scale(1)`}],{duration:fromRect?110:170,easing:'ease-out'});
+    let ok=false;const done=()=>{if(ok)return;ok=true;if(ANIM.fly&&ANIM.fly.anim===an)ANIM.fly=null;f.remove();fin()};an.onfinish=done;ANIM.fly={anim:an,done}}
   else fin()}
 function afterMove(ev){
   const g=game;ev.adv.forEach(i=>ANIM.adv.add(i));ev.thaw.forEach(([i,k])=>ANIM.thaw.add(i+'_'+k));ev.unlock.forEach(i=>ANIM.unl.add(i));
