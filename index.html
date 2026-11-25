@@ -599,10 +599,12 @@ function solveB(s0,limit,K,ms){if(s0.r===0)return [];const t0=Date.now();let bes
   return null}
 /* --- žaidimo būsena --- */
 const isTriF=f=>f.length===3&&f.every(Boolean)&&f[0].t>=0&&f[0].t===f[1].t&&f[1].t===f[2].t;
+function fnv(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return (h>>>0).toString(36)}
 class Game{
   constructor(L){const g=generate(L);Object.assign(this,g);this.status='play';this.moves=0;this.m=0;this.combo=0;this.maxCombo=0;this.lastMatch=-1e9;this.hist=[];this.used=0;this.firstType=null;
     this.el=0;this.started=false;this.freeze=0;this.extraT=0;this.cleared=0;this.ct=[];this.spoiled=0;this.moveMode=!!this.orders;this.extraMv=0;
     this.ps={};for(const t in this.perish)this.ps[t]={left:this.perish[t]*1000,sp:0};
+    this.fp=fnv(JSON.stringify([this.sh,this.orders||0,this.perish||0,this.time,this.maxMoves||0]));   // lygio „pirštų atspaudas“: nebaigtas lygis tęsiamas tik jei lygis nepasikeitė
     const r=rng(L*31+7);
     if(this.chalOn){const ct=['combo','first','noboost'][Math.floor(r()*3)];
       this.chal=ct==='combo'?{type:'combo',n:this.K>=10?3:2}:ct==='first'?{type:'first',t:simSol(this.sh,this.sol).order[0]}:{type:'noboost'}}else this.chal=null}   // „pirmą išvalyk“ – ta rūšis, kurią sprendimas išvalo pirmą, todėl visada įmanoma
@@ -690,9 +692,9 @@ class Game{
 </script>
 <script>
 /* ===================== VALDYMAS ===================== */
-const VERSION='1.6.1';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
+const VERSION='1.6.2';   // ⚠️ keičiant žaidimą – padidinti čia ir version.json
 const $=id=>document.getElementById(id);
-const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 let unlocked=store.get('prekes.unlocked',1),level=Math.min(unlocked,MAXL),best=store.get('prekes.stars',{});
 let game=null,gen=0,curWorld=null,busy=false,sel=null,hintMv=null;const ANIM={adv:new Set(),drop:null,thaw:new Set(),unl:new Set(),rev:new Set(),spoil:new Set(),intro:false,n:0,needR:false};
 const fmt=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
@@ -711,6 +713,7 @@ function streakBreak(){if(STREAK>0&&!tmOn()){const s=STREAK;STREAK=0;store.set('
 function newGame(L,showWorld,mode){
   if(mode!=='daily'&&DAILY.on&&L!==DAILY.L)DAILY.on=false;
   if(game&&game.status==='play'&&game.moves>0&&!game.special)streakBreak();   // nutrauktas lygis nutraukia seriją
+  store.del('prekes.run');
   PZ.on=false;if(L<1)L=1;if(!mode){while(L>1&&!playable(L))L--}
   gen++;level=L;if(!mode)store.set('prekes.level',level);$('menu').classList.remove('show');closeCard();handHide();
   game=new Game(level);game.daily=mode==='daily';game.event=mode==='event'?level-EVENT0:0;game.special=game.daily||!!game.event;LAY.ph=0;LAY.pe2=0;sel=null;hintMv=null;busy=false;ANIM.fly=null;$('fx').innerHTML='';
@@ -762,7 +765,8 @@ function idleHint(first){clearTimeout(HAND.idle);if(!game||level>8||game.daily)r
 const LAY={sz:50,pc:0,Lc:1,pe:0,Le:1,ph:0,pe2:0,cols:3,gx:6,gy:6};
 function layoutBoard(){
   const b=$('board'),g=game,n=g.sh.filter(s=>!s.mv).length,kc=g.sh.filter(s=>s.mv==='conv').length,ke=g.sh.filter(s=>s.mv==='elev').length;
-  const bw=b.clientWidth-12,bh=b.clientHeight-8,gx=6,gy=6,CP=8;let bestL=null;
+  const side=matchMedia('(pointer:coarse)').matches?10:0;   // telefone – toliau nuo ekrano kraštų, kur Android „atgal“ gestas
+  const bw=b.clientWidth-12-2*side,bh=b.clientHeight-8,gx=6,gy=6,CP=8;let bestL=null;
   const fits=(sz,c)=>{const shW=3*sz+12,shH=1.46*sz+12,rows=Math.ceil(Math.max(n,1)/c);
     const w=c*shW+(c-1)*gx+2*CP+(ke?shW+18:0),h=rows*shH+(rows-1)*gy+2*CP+12+(kc?shH+22:0);return w<=bw&&h<=bh&&(!ke||bh-(kc?shH+22:0)>=shH*1.6)};
   // kiekvienam stulpelių skaičiui – didžiausios telpančios prekės; renkamės didžiausias (kuo didesnės, tuo lengviau paimti pirštu)
@@ -911,7 +915,7 @@ function afterMove(ev){
   if(ev.thaw.length)setTimeout(()=>sfx('thaw'),250);
   if(ev.unlock.length){setTimeout(()=>{sfx('unlock');buzz([20,30,20])},300)}
   if(g.orders&&ev.b!=null){const B=g.sh[ev.b];if(B&&B.cap===3&&isTriF(B.front)&&g.reserved(B.front[0].t))waitFx(ev.b,B.front[0].t)}
-  idleHint();checkEnd()}
+  idleHint();checkEnd();saveRun()}
 function waitFx(i,t){const g=game,el=shelfEl(i);if(!el)return;const o=g.orders.find(o=>o.ts.includes(t)),w=W(),r=el.getBoundingClientRect();
   const e=fxEl('rvb',`${w.sk.who[o.who%w.sk.who.length]} Palauksiu eilės!`);const x=r.left+r.width/2,y=r.top+6;
   e.animate([{transform:`translate(${x}px,${y}px) translate(-50%,-50%) scale(.5)`,opacity:0},{transform:`translate(${x}px,${y-10}px) translate(-50%,-50%) scale(1.05)`,opacity:1,offset:.15},{transform:`translate(${x}px,${y-14}px) translate(-50%,-50%) scale(1)`,opacity:1,offset:.8},{transform:`translate(${x}px,${y-24}px) translate(-50%,-50%) scale(.95)`,opacity:0}],{duration:1700,easing:'ease-out'}).onfinish=()=>e.remove();
@@ -1012,7 +1016,7 @@ setInterval(()=>{const n=performance.now(),dt=Math.min(500,n-lastT);lastT=n;cons
   if(g.moveMode)return;   // užsakymų lygiuose – ėjimai, ne laikas
   const rem=g.timeLimit*1000-g.el,s=Math.ceil(rem/1000);if(s<=10&&s>0&&s!==tickS){tickS=s;sfx('tick')}
   if(rem<=0){g.el=g.timeLimit*1000;g.status='lose';g.why='time';renderHUD();loseCard()}},100);
-setInterval(()=>{if(game&&game.status==='play')renderHUD()},250);
+let saveN=0;setInterval(()=>{if(game&&game.status==='play')renderHUD();if(++saveN%12===0)saveRun()},250);
 /* ===================== MONETOS IR PAGALBOS ===================== */
 var COINS=store.get('prekes.coins',null);if(COINS==null){COINS=60;store.set('prekes.coins',COINS)}
 function tmOn(){try{return !!testMode}catch(e){return false}}
@@ -1399,21 +1403,22 @@ function advWin(g0){const g=game,d=g.event,st=g.stars(),S=advState(),first=!S[d]
 /* ===================== PAGRINDINIS MENIU ===================== */
 var HOME={on:false};
 function showHome(){HOME.on=true;handHide();if(curWorld)setBg(curWorld);let tot=0;for(const k in best)tot+=best[k]||0;
-  const front=Math.min(unlocked,MAXL),w=worldOf(front),s=achStats(),got=ACH.filter(a=>s.got[a.id]).length,al=Object.keys(ALBUM).length,r=rng(Date.now()%9973);
+  const run=game&&game.status==='play'&&(game.moves>0||game.used>0),front=Math.min(unlocked,MAXL),w=worldOf(front),s=achStats(),got=ACH.filter(a=>s.got[a.id]).length,al=Object.keys(ALBUM).length,r=rng(Date.now()%9973);
   let fl='';for(let i=0;i<10;i++)fl+=`<span class="hfl" style="left:${r()*92}%;animation-duration:${14+r()*14}s;animation-delay:${-r()*20}s">${ALL_GOODS[Math.floor(r()*ALL_GOODS.length)]}</span>`;
   const logo=w.items[Math.floor(r()*12)];
   $('home').innerHTML=`${fl}<div class="htop"><span>⭐ ${tot}</span><span>🪙 ${COINS}</span></div><div class="hm">
     <div class="hlogo"><div>${[0,1,2].map(()=>`<span>${logo}</span>`).join('')}</div><i></i></div>
     <h1>Prekių<span>rūšiuotojas</span></h1>
     <p class="hst">${w.emoji} ${w.name} · Etapas ${cyc(front)+1}</p>
-    <button class="big" id="hpl">▶ Žaisti<small>Lygis ${front}</small></button>
+    ${run?`<button class="big" id="hpl">▶ Tęsti<small>${game.daily?'Dienos iššūkis':game.event?'Durelės '+game.event:'Lygis '+level} · nebaigtas</small></button>`:`<button class="big" id="hpl">▶ Žaisti<small>Lygis ${front}</small></button>`}
     <div class="hchips">${STREAK>0?`<span>🔥 Serija ${STREAK}</span>`:''}<span>🎁 <span class="cb"><i style="width:${CHEST/5*100}%"></i></span> ${CHEST}/5</span></div>
     ${advTile()}<div class="tiles"><button id="hdl" class="${dailyDone()?'':'hot'}"><b>📅</b>Dienos iššūkis<small>${dailyDone()?'✅ Šiandien įveikta':'Laukia prizas 🪙'}</small></button>
       <button id="hlv"><b>🗺️</b>Žemėlapis<small>⭐ ${tot}</small></button>
       <button id="hal"><b>📒</b>Kolekcija<small>${al}/${ALL_GOODS.length+XMAS.items.length}</small></button>
       <button id="hac"><b>🏆</b>Pasiekimai<small>${got}/${ACH.length}</small></button></div>
     <button id="hst">⚙️ Nustatymai</button><div class="ver">Versija ${VERSION}</div></div>`;$('home').classList.add('show');
-  $('hpl').onclick=()=>{auInit();if(level!==front||game.special||game.moves>0||game.status!=='play')newGame(front);hideHome()};
+  $('hpl').onclick=()=>{auInit();if(run){hideHome(true);render();toast('▶ Tęsiam',game.daily?'Dienos iššūkis':game.event?'Durelės '+game.event:'Lygis '+level);return}
+    if(level!==front||game.special||game.moves>0||game.status!=='play')newGame(front);hideHome()};
   $('hdl').onclick=()=>{auInit();startDaily()};if($('hadv'))$('hadv').onclick=()=>{auInit();openAdvent()};$('hac').onclick=()=>openAch();$('hal').onclick=()=>openAlbum();
   $('hlv').onclick=()=>{auInit();hideHome(true);openMenu()};$('hst').onclick=()=>openSettings()}
 function hideHome(noFx){HOME.on=false;$('home').classList.remove('show');if(!noFx&&game)startLevelFx()}
@@ -1439,7 +1444,39 @@ if(hosted()&&'serviceWorker' in navigator){navigator.serviceWorker.register('sw.
 setTimeout(()=>checkUpdate(false),1500);addEventListener('online',()=>checkUpdate(false));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate(false)});
 /* ===================== PALEIDIMAS ===================== */
-HOME.on=true;newGame(level,false);showHome();setTimeout(achCheck,2500);
+/* ===================== NEBAIGTAS LYGIS: IŠSAUGOJIMAS IR TĘSIMAS ===================== */
+// Jei programėlė netyčia užsidaro (pvz., Android „atgal“ gestu ar ją išjungus), nebaigtas lygis neprarandamas – kitą kartą tęsiama nuo ten pat.
+function saveRun(){const g=game;if(!g)return;
+  if(g.status!=='play'||!(g.moves>0||g.used>0)){store.del('prekes.run');return}
+  store.set('prekes.run',{fp:g.fp,L:level,mode:modeOf(g)||'',day:g.daily?dayNo():0,snap:g.snap(),el:g.el,freeze:g.freeze,extraT:g.extraT,extraMv:g.extraMv,used:g.used,firstType:g.firstType,maxCombo:g.maxCombo,sbonus:g.sbonus||0,hist:g.hist.slice(-8)})}
+function loadRun(){const r=store.get('prekes.run',null);if(!r||!r.fp||!r.snap)return null;
+  if(r.mode==='daily'&&(r.day!==dayNo()||r.L!==dailyLevel()))return null;
+  if(r.mode==='event'){const A=advInfo(),d=r.L-EVENT0;if(!testMode&&!(A&&d>=1&&d<=A.open))return null}
+  if(!r.mode&&!playable(r.L))return null;return r}
+function resumeRun(r){if(!r)return false;const L0=level;
+  try{if(r.mode==='daily'){DAILY.on=true;DAILY.L=r.L}
+    newGame(r.L,false,r.mode||undefined);const g=game;if(g.fp!==r.fp)throw 0;   // po atnaujinimo lygis pasikeitė – pradedam iš naujo
+    g.restore(r.snap);
+    Object.assign(g,{el:r.el||0,freeze:r.freeze||0,extraT:r.extraT||0,extraMv:r.extraMv||0,used:r.used||0,firstType:r.firstType==null?null:r.firstType,maxCombo:r.maxCombo||0,sbonus:r.sbonus||0,hist:r.hist||[],started:false});   // laikas vėl eis tik nuo pirmo ėjimo
+    layoutBoard();render();renderHUD();renderBar();saveRun();return true}
+  catch(e){store.del('prekes.run');level=L0;DAILY.on=false;return false}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveRun()});addEventListener('pagehide',saveRun);
+/* ===================== ANDROID „ATGAL“ GESTAS ===================== */
+// Braukimas nuo ekrano krašto Android telefone = „atgal“, o be istorijos jis uždaro programėlę. Laikom vieną papildomą istorijos įrašą:
+// „atgal“ nuima jį, ir vietoj išėjimo atidarom pauzę ar uždarom atvirą langą. Įrašą grąžinam po kito paspaudimo (to reikalauja naršyklė).
+const BACK={armed:false};
+function armBack(){if(BACK.armed)return;try{history.pushState({prekes:1},'');BACK.armed=true}catch(e){}}
+addEventListener('pointerup',armBack,true);addEventListener('click',armBack,true);addEventListener('keydown',armBack,true);   // lietimui naudotojo veiksmas užskaitomas tik atitraukus pirštą
+addEventListener('popstate',()=>{BACK.armed=false;saveRun();onBack()});
+function onBack(){const vis=b=>b&&!b.disabled&&b.offsetParent!==null&&getComputedStyle(b).visibility!=='hidden';
+  if($('overlay').classList.contains('show')){
+    for(const id of ['pr','hok','cn','qn','rn','tno','ab','sb','alx','avx','bx','chn','chx']){const b=$(id);if(vis(b)){b.click();return}}
+    return}   // pergalės ar pralaimėjimo lange – niekur neišeinam
+  if($('menu').classList.contains('show')){$('mx').click();return}
+  if(HOME.on){toast('👋 Išeiti iš žaidimo?','Braukite „atgal“ dar kartą');return}   // antras „atgal“ iš karto – išeina (progresas išsaugotas)
+  if(game&&game.status==='play')openPause()}
+try{if(hosted()&&navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}   // prašom naršyklės neištrinti išsaugoto progreso
+HOME.on=true;if(!resumeRun(loadRun()))newGame(level,false);showHome();setTimeout(achCheck,2500);
 
 </script>
 </body>

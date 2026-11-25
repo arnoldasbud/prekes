@@ -11,6 +11,8 @@ Rikiuok prekes lentynose – 3 vienodos dingsta (Goods Sort / Skewer Jam mechani
 - Lygių žemėlapis, dienos iššūkis, pasiekimai, vibracija (Android).
 - Kiekvienas lygis kuriamas nuo sprendimo atgal, todėl visada išsprendžiamas.
 
+**Netyčinis uždarymas.** Nebaigtas lygis išsaugomas po kiekvieno ėjimo – jei žaidimas užsidaro, pagrindiniame meniu spausk „▶ Tęsti“. Android „atgal“ braukimas nuo ekrano krašto žaidžiant atidaro pauzę, o atidarytame lange jį uždaro; pagrindiniame meniu išeinama tik antru braukimu iš eilės.
+
 Žaidimas – vienas `index.html` failas. Keičiant žaidimą padidink `VERSION` faile `index.html` ir `version.json` – įdiegtas žaidimas pasiūlys atnaujinti.
 
 Testo režimo slaptažodis: `prekes`.
